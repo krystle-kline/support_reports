@@ -10,5 +10,7 @@ status_mapping = {
     7: "7",
     8: "8",
     9: "Change for Tech Review",
-    10: "10"
+    10: "10",
+    11: "11",
+    12: "Deferred"
 }

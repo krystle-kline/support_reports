@@ -107,7 +107,8 @@ def main():
         with col2:
             st.metric("Billable time this month", f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours")
 
-        st.experimental_show(tickets_details_df)
+        '''### Tickets with time tracked this month'''
+        tickets_details_df
     else:
         st.write("No time tracked for this month")
 

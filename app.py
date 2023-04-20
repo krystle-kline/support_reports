@@ -12,17 +12,43 @@ def main():
     companies_data = [page_data for sublist in get_paginated(companies_url, api_key) for page_data in sublist]
     companies_df = pd.DataFrame(companies_data)
     companies_options = dict(zip(companies_df['name'], companies_df['id']))
+    companies_custom_fields = companies_df['custom_fields'].to_list()
+    companies_df = pd.concat([companies_df.drop(['custom_fields'], axis=1), companies_df['custom_fields'].apply(pd.Series)], axis=1)
 
-    with st.sidebar:
+    col1, col2 = st.columns(2)
+    with col1:
         selected_client = st.selectbox('Select a client', companies_options)
         selected_value = companies_options.get(selected_client)
+    with col2:
         start_date, end_date = date_range_selector('Select a month and year', datetime.datetime.now()-datetime.timedelta(days=1080), datetime.datetime.now())
 
     start_date_datetime = datetime.datetime.strptime(start_date, "%Y-%m-%d")
 
-    f'''# Made Media support report'''
-    f'''## {selected_client} — {start_date_datetime.strftime("%B %Y")}'''
+    f'''### {selected_client} — {start_date_datetime.strftime("%B %Y")}'''
 
+    # company_code
+    # territory
+    # support_contract
+    # paid_annually?
+    # inclusive_hours
+    # contract_hourly_rate
+    # currency
+
+    company_df = companies_df[companies_df['id'] == selected_value]
+
+    company_info = {
+        'company_code': company_df['company_code'].values[0],
+        'territory': company_df['territory'].values[0],
+        'support_contract': company_df['support_contract'].values[0],
+        'paid_annually': company_df['paid_annually'].values[0],
+        'inclusive_hours': company_df['inclusive_hours'].values[0],
+        'contract_hourly_rate': company_df['contract_hourly_rate'].values[0],
+        'currency': company_df['currency'].values[0]
+    }
+
+    company_info
+
+    
     products_url = f'{base_url}/products'
     products_data = [page_data for sublist in get_paginated(products_url, api_key) for page_data in sublist]
     product_options = {product['id']: product['name'] for product in products_data}
@@ -39,8 +65,6 @@ def main():
             'company_id': 'str',
             'time_spent_in_seconds': 'str'
         })
-
-    # st.experimental_show(time_entries_df)
 
     tickets_details = []
 
@@ -100,14 +124,13 @@ def main():
         })
         tickets_details_df.set_index('ticket_id', inplace=True)
 
-        # two columns
         col1, col2 = st.columns(2)
         with col1:
             st.metric("Total time this month", f"{tickets_details_df['time_spent_this_month'].sum():.1f} hours")
         with col2:
             st.metric("Billable time this month", f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours")
 
-        '''### Tickets with time tracked this month'''
+        '''#### Tickets with time tracked this month'''
         tickets_details_df
     else:
         st.write("No time tracked for this month")

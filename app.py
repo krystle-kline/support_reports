@@ -2,70 +2,88 @@ import pandas as pd
 import streamlit as st
 import datetime
 from config import base_url, status_mapping
-from api import get_ticket_data, get_status_data, get_agent_data, get_requester_data
-from utils import date_range_selector, get_paginated, get_data_from_api, calculate_billable_time
+from api import get_ticket_data, get_agent_data, get_requester_data
+from utils import date_range_selector, get_paginated
 
 api_key = st.secrets["api_key"]
 
-def main():
-    companies_url = f'{base_url}/companies'
-    companies_data = [page_data for sublist in get_paginated(companies_url, api_key) for page_data in sublist]
-    companies_df = pd.DataFrame(companies_data)
-    companies_options = dict(zip(companies_df['name'], companies_df['id']))
-    companies_custom_fields = companies_df['custom_fields'].to_list()
-    companies_df = pd.concat([companies_df.drop(['custom_fields'], axis=1), companies_df['custom_fields'].apply(pd.Series)], axis=1)
 
+def calculate_billable_time(time_entry, product_name="Unknown", change_request=False):
+    # This function takes a time entry and returns the number of hours that should be billed.
+
+    time_spent = time_entry["time_spent_in_seconds"] / 3600
+    saas_products = ["BlocksOffice", "MonkeyWrench"]
+
+    if change_request:
+        return time_spent
+        # If the ticket is marked as a change request, it's definitely billable
+    elif product_name in saas_products:
+        return 0
+        # Then, if it's a SaaS product, it's not billable
+    elif time_entry["billable"]:
+        return time_spent
+        # If it's not a SaaS product, and the time entry is marked as billable, it's billable
+    else:
+        return 0
+        # Otherwise, it's not billable
+
+
+@st.cache_resource(ttl=60*60*24*7, show_spinner="Getting client information…")
+def get_companies_data():
+    companies_url = f'{base_url}/companies'
+    companies_data = []
+    for page_data in get_paginated(companies_url, api_key):
+        companies_data.extend(page_data)
+    return companies_data
+
+
+def get_companies_options(companies_data):
+    companies_options = {}
+    for company_data in companies_data:
+        companies_options[company_data['name']] = company_data['id']
+    return companies_options
+
+
+@st.cache_resource(ttl=60*60*24*7, show_spinner="Getting information about this Made product…")
+def get_products_data():
+    products_url = f'{base_url}/products'
+    products_data = [page_data for sublist in get_paginated(
+        products_url, api_key) for page_data in sublist]
+    return products_data
+
+
+def get_product_options(products_data):
+    product_options = {product['id']: product['name']
+                       for product in products_data}
+    return product_options
+
+
+@st.cache_resource(ttl=60*60*24*7, show_spinner="Getting time entry information…")
+def get_time_entries_data(start_date, end_date, selected_value):
+    time_entries_url = f'{base_url}/time_entries?executed_before={end_date}&executed_after={start_date}&company_id={selected_value}'
+    time_entries_data = [page_data for sublist in get_paginated(
+        time_entries_url, api_key) for page_data in sublist]
+    return time_entries_data
+
+
+def display_client_selector(companies_options):
     col1, col2 = st.columns(2)
     with col1:
         selected_client = st.selectbox('Select a client', companies_options)
         selected_value = companies_options.get(selected_client)
     with col2:
-        start_date, end_date = date_range_selector('Select a month and year', datetime.datetime.now()-datetime.timedelta(days=1080), datetime.datetime.now())
+        start_date, end_date = date_range_selector('Select a month and year', datetime.datetime.now(
+        ) - datetime.timedelta(days=1080), datetime.datetime.now())
+    return selected_client, selected_value, start_date, end_date
 
+
+def display_company_summary(selected_client, start_date):
     start_date_datetime = datetime.datetime.strptime(start_date, "%Y-%m-%d")
+    st.markdown(
+        f'### {selected_client} — {start_date_datetime.strftime("%B %Y")}')
 
-    f'''### {selected_client} — {start_date_datetime.strftime("%B %Y")}'''
 
-    # company_code
-    # territory
-    # support_contract
-    # paid_annually?
-    # inclusive_hours
-    # contract_hourly_rate
-    # currency
-
-    company_df = companies_df[companies_df['id'] == selected_value]
-
-    company_info = {
-        'company_code': company_df['company_code'].values[0],
-        'territory': company_df['territory'].values[0],
-        'support_contract': company_df['support_contract'].values[0],
-        'paid_annually': company_df['paid_annually'].values[0],
-        'inclusive_hours': company_df['inclusive_hours'].values[0],
-        'contract_hourly_rate': company_df['contract_hourly_rate'].values[0],
-        'currency': company_df['currency'].values[0]
-    }
-
-    company_info
-
-    
-    products_url = f'{base_url}/products'
-    products_data = [page_data for sublist in get_paginated(products_url, api_key) for page_data in sublist]
-    product_options = {product['id']: product['name'] for product in products_data}
-
-    time_entries_url = f'{base_url}/time_entries?executed_before={end_date}&executed_after={start_date}&company_id={selected_value}'
-    time_entries_data = [page_data for sublist in get_paginated(time_entries_url, api_key) for page_data in sublist]
-    time_entries_df = pd.DataFrame(time_entries_data)
-
-    if not time_entries_df.empty:
-        time_entries_df = time_entries_df.astype({
-            'id': 'str',
-            'agent_id': 'str',
-            'ticket_id': 'str',
-            'company_id': 'str',
-            'time_spent_in_seconds': 'str'
-        })
-
+def prepare_tickets_details(time_entries_data, product_options):
     tickets_details = []
 
     for time_entry in time_entries_data:
@@ -84,7 +102,8 @@ def main():
                 agent_name = agent_data["contact"]["name"]
             requester_name = "Unknown"
             if ticket_data["requester_id"]:
-                requester_data = get_requester_data(ticket_data["requester_id"])
+                requester_data = get_requester_data(
+                    ticket_data["requester_id"])
                 requester_name = requester_data["name"]
             change_request = ticket_data["custom_fields"].get(
                 "change_request", False)
@@ -100,55 +119,79 @@ def main():
                 "requester_name": requester_name,
                 "category": ticket_category,
                 "change_request": change_request,
-                "time_spent_this_month": time_entry["time_spent_in_seconds"]/3600,
-                "billable_time_this_month": calculate_billable_time(product_name, change_request, time_entry)
+                "time_spent_this_month": time_entry["time_spent_in_seconds"] / 3600,
+                "billable_time_this_month": calculate_billable_time(time_entry, product_name, change_request)
             })
         else:
-            found_ticket["time_spent_this_month"] += time_entry["time_spent_in_seconds"]/3600
-            found_ticket["billable_time_this_month"] += calculate_billable_time(product_name, change_request, time_entry)
+            change_request = found_ticket.get("change_request", False)
+            found_ticket["time_spent_this_month"] += time_entry["time_spent_in_seconds"] / 3600
+            found_ticket["billable_time_this_month"] += calculate_billable_time(
+                time_entry, product_name, change_request)
 
-    tickets_details_df = pd.DataFrame(tickets_details)
+    return tickets_details
 
-    if not tickets_details_df.empty:
-        tickets_details_df = tickets_details_df.astype({
+
+def display_time_summary(tickets_details_df):
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Total time this month",
+                  f"{tickets_details_df['time_spent_this_month'].sum():.1f} hours")
+    with col2:
+        st.metric("Billable time this month",
+                  f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours")
+
+
+def main():
+    companies_data = get_companies_data()
+    companies_options = get_companies_options(companies_data)
+    products_data = get_products_data()
+    product_options = get_product_options(products_data)
+
+    selected_client, selected_value, start_date, end_date = display_client_selector(
+        companies_options)
+    display_company_summary(selected_client, start_date)
+
+    time_entries_data = get_time_entries_data(
+        start_date, end_date, selected_value)
+    time_entries_df = pd.DataFrame(time_entries_data)
+
+    if not time_entries_df.empty:
+        time_entries_df = time_entries_df.astype({
+            'id': 'str',
+            'agent_id': 'str',
             'ticket_id': 'str',
-            'title': 'str',
-            'product': 'str',
-            'status': 'str',
-            'assigned_agent': 'str',
-            'requester_name': 'str',
-            'category': 'str',
-            'change_request': 'bool',
-            'time_spent_this_month': 'float',
-            'billable_time_this_month': 'float'
+            'company_id': 'str',
+            'time_spent_in_seconds': 'str'
         })
-        tickets_details_df.set_index('ticket_id', inplace=True)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Total time this month", f"{tickets_details_df['time_spent_this_month'].sum():.1f} hours")
-        with col2:
-            st.metric("Billable time this month", f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours")
+        tickets_details = prepare_tickets_details(
+            time_entries_data, product_options)
+        tickets_details_df = pd.DataFrame(tickets_details)
 
-        '''#### Tickets with time tracked this month'''
-        tickets_details_df
+        if not tickets_details_df.empty:
+            tickets_details_df = tickets_details_df.astype({
+                'ticket_id': 'str',
+                'title': 'str',
+                'product': 'str',
+                'status': 'str',
+                'assigned_agent': 'str',
+                'requester_name': 'str',
+                'category': 'str',
+                'change_request': 'bool',
+                'time_spent_this_month': 'float',
+                'billable_time_this_month': 'float'
+            })
+            tickets_details_df.set_index('ticket_id', inplace=True)
+
+            display_time_summary(tickets_details_df)
+
+            st.markdown("#### Tickets with time tracked this month")
+            st.write(tickets_details_df)
+        else:
+            st.write("No time tracked for this month")
     else:
         st.write("No time tracked for this month")
 
-    # total_time_spent = tickets_details_df['time_spent_this_month'].sum()
-    # total_billable_time = tickets_details_df['billable_time_this_month'].sum()
-
-    # st.markdown(f"**Total time spent this month: {total_time_spent:.2f} hours**")
-    # st.markdown(f"**Total billable time this month: {total_billable_time:.2f} hours**")
-
-    # st.write("## Tickets breakdown by product")
-    # st.experimental_show(tickets_details_df.groupby("product").agg({"billable_time_this_month": "sum"}).sort_values("billable_time_this_month", ascending=False))
-
-    # st.write("## Tickets breakdown by status")
-    # st.experimental_show(tickets_details_df.groupby("status").agg({"billable_time_this_month": "sum"}).sort_values("billable_time_this_month", ascending=False))
-
-    # st.write("## Tickets breakdown by agent")
-    # st.experimental_show(tickets_details_df.groupby("assigned_agent").agg({"billable_time_this_month": "sum"}).sort_values("billable_time_this_month", ascending=False))
 
 if __name__ == "__main__":
     main()

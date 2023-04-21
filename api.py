@@ -10,12 +10,6 @@ def get_ticket_data(ticket_id):
     ticket_data, _ = get_data_from_api(ticket_url, api_key)
     return ticket_data
 
-@st.cache_resource(ttl=60*60*24*7, show_spinner="Getting status data…")
-def get_status_data():
-    status_url = f'{base_url}/ticket_statuses'
-    status_data, _ = get_data_from_api(status_url, api_key)
-    return status_data
-
 @st.cache_resource(ttl=60*60*24*7, show_spinner="Getting agent data…")
 def get_agent_data(agent_id):
     agent_url = f'{base_url}/agents/{agent_id}'

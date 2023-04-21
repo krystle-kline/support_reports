@@ -16,6 +16,12 @@ def get_agent_data(agent_id):
     agent_data, _ = get_data_from_api(agent_url, api_key)
     return agent_data
 
+@st.cache_resource(ttl=60*60*24*7, show_spinner="Getting group data…")
+def get_group_data(group_id):
+    group_url = f'{base_url}/groups/{group_id}'
+    group_data, _ = get_data_from_api(group_url, api_key)
+    return group_data
+
 @st.cache_resource(ttl=60*60*24*7, show_spinner="Getting requester data…")
 def get_requester_data(requester_id):
     requester_url = f'{base_url}/contacts/{requester_id}'

@@ -2,21 +2,31 @@ import pandas as pd
 import streamlit as st
 import datetime
 from config import base_url, status_mapping
-from api import get_ticket_data, get_agent_data, get_requester_data
+from api import get_ticket_data, get_agent_data, get_requester_data, get_group_data
 from utils import date_range_selector, get_paginated
+import gspread
+from google.oauth2.service_account import Credentials
 
 api_key = st.secrets["api_key"]
 
 
-def calculate_billable_time(time_entry, product_name="Unknown", change_request=False):
-    # This function takes a time entry and returns the number of hours that should be billed.
-
+def calculate_billable_time(time_entry):
+    # This function takes a time entry and returns the number of hours that should be billed to the client for it
+    ticket_data = get_ticket_data(time_entry["ticket_id"])
+    product_id = ticket_data["product_id"]
+    product_name = get_product_options(get_products_data())[product_id]
+    change_request = ticket_data["custom_fields"].get("change_request", False)
     time_spent = time_entry["time_spent_in_seconds"] / 3600
     saas_products = ["BlocksOffice", "MonkeyWrench"]
+    unbillable_billing_statuses = ["Free", "90 Days", "Invoice"]
+    billing_status = ticket_data["custom_fields"].get("billing_status")
 
-    if change_request:
+    if billing_status in unbillable_billing_statuses:
+        return 0
+        # If the ticket is has one of these billing statuses in FreshDesk, it's definitely not billable
+    elif change_request:
         return time_spent
-        # If the ticket is marked as a change request, it's definitely billable
+        # Otherwise, if the ticket is marked as a change request, it's billable
     elif product_name in saas_products:
         return 0
         # Then, if it's a SaaS product, it's not billable
@@ -26,6 +36,25 @@ def calculate_billable_time(time_entry, product_name="Unknown", change_request=F
     else:
         return 0
         # Otherwise, it's not billable
+
+
+def setup_google_sheets():
+    scopes = [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive'
+    ]
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=scopes
+    )
+    client = gspread.authorize(creds)
+    return client
+
+
+@st.cache_resource(ttl=15, show_spinner="Getting rollover data…")
+def open_google_sheet(client, url):
+    sheet = client.open_by_url(url)
+    return sheet
 
 
 @st.cache_resource(ttl=60*60*24*7, show_spinner="Getting client information…")
@@ -96,6 +125,11 @@ def prepare_tickets_details(time_entries_data, product_options):
             product_name = product_options.get(
                 ticket_data["product_id"], "Unknown")
             status_name = status_mapping.get(ticket_data["status"], "Unknown")
+            group_name = "Unknown"
+            if ticket_data["group_id"]:
+                group_id = ticket_data.get("group_id", None)
+                group_data = get_group_data(ticket_data["group_id"])
+                group_name = group_data["name"]
             agent_name = "Unknown"
             if ticket_data["responder_id"]:
                 agent_data = get_agent_data(ticket_data["responder_id"])
@@ -109,26 +143,37 @@ def prepare_tickets_details(time_entries_data, product_options):
                 "change_request", False)
             ticket_category = ticket_data["custom_fields"].get(
                 "category", "Unknown")
+            ticket_type = ticket_data.get("type", "Unknown")
+            billing_status = ticket_data["custom_fields"].get("billing_status", "Unknown")
+            cf_client_deadline = ticket_data["custom_fields"].get("cf_client_deadline", None)
+            tags = ticket_data.get("tags", [])
 
             tickets_details.append({
                 "ticket_id": ticket_id,
-                "title": ticket_data["subject"],
-                "product": product_name,
                 "status": status_name,
-                "assigned_agent": agent_name,
+                "title": ticket_data["subject"],
                 "requester_name": requester_name,
                 "category": ticket_category,
+                "type": ticket_type,
+                "product": product_name,
                 "change_request": change_request,
+                "assigned_agent": agent_name,
+                "group": group_name,
+                "billing_status": billing_status,
+                "cf_client_deadline": cf_client_deadline,
+                "tags": tags,
                 "time_spent_this_month": time_entry["time_spent_in_seconds"] / 3600,
-                "billable_time_this_month": calculate_billable_time(time_entry, product_name, change_request)
+                "billable_time_this_month": calculate_billable_time(time_entry)
             })
         else:
             change_request = found_ticket.get("change_request", False)
             found_ticket["time_spent_this_month"] += time_entry["time_spent_in_seconds"] / 3600
             found_ticket["billable_time_this_month"] += calculate_billable_time(
-                time_entry, product_name, change_request)
+                time_entry)
 
     return tickets_details
+
+
 
 
 def display_time_summary(tickets_details_df):
@@ -139,9 +184,29 @@ def display_time_summary(tickets_details_df):
     with col2:
         st.metric("Billable time this month",
                   f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours")
+    if not tickets_details_df[tickets_details_df["billing_status"] == "Invoice"].empty:
+        invoice_tickets = tickets_details_df[tickets_details_df["billing_status"] == "Invoice"]
+        num_invoice_tickets = len(invoice_tickets)
+        if num_invoice_tickets == 1:
+            ticket_id = invoice_tickets["ticket_id"].iloc[0]
+            invoice_tickets_str = f"[#{ticket_id}](https://mademedia.freshdesk.com/support/tickets/{ticket_id})"
+        else:
+            invoice_ticket_ids = invoice_tickets["ticket_id"].tolist()
+            invoice_tickets_str = ", ".join([f"[#{ticket_id}](https://mademedia.freshdesk.com/support/tickets/{ticket_id})" for ticket_id in invoice_ticket_ids])
+        total_invoice_time = invoice_tickets["time_spent_this_month"].sum()
+        total_invoice_time_str = "{:.1f}".format(total_invoice_time)
+        st.warning(f"Ticket{'s' if num_invoice_tickets > 1 else ''} {invoice_tickets_str} marked with billing status ‘Invoice’ {'have a total of' if num_invoice_tickets > 1 else 'has'} {total_invoice_time_str} hours tracked this month. This time is not included in the above total of billable hours.")
+
 
 
 def main():
+    # client = setup_google_sheets()
+    # sheet = open_google_sheet(client, st.secrets["private_gsheets_url"])
+    # worksheet = sheet.get_worksheet(0)
+    # data = worksheet.get_all_records()
+    # st.write(data)
+
+
     companies_data = get_companies_data()
     companies_options = get_companies_options(companies_data)
     products_data = get_products_data()
@@ -181,14 +246,18 @@ def main():
                 'time_spent_this_month': 'float',
                 'billable_time_this_month': 'float'
             })
-            tickets_details_df.set_index('ticket_id', inplace=True)
+            # tickets_details_df.set_index('ticket_id', inplace=True)
 
             display_time_summary(tickets_details_df)
 
             st.markdown("#### Tickets with time tracked this month")
-            st.write(tickets_details_df)
+
+            formatted_tickets_details_df = tickets_details_df.copy()
+
+            st.dataframe(formatted_tickets_details_df)
+            
         else:
-            st.write("No time tracked for this month")
+            st.write("Uh-oh, I couldn't find any tickets that match the time entries tracked this month. This probably means something is wrong with me 🤖")
     else:
         st.write("No time tracked for this month")
 

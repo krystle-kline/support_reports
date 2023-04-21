@@ -8,7 +8,7 @@ status_mapping = {
     5: "Closed",
     6: "Waiting on Customer",
     7: "7",
-    8: "8",
+    8: "Awaiting Deploy",
     9: "Change for Tech Review",
     10: "10",
     11: "11",

@@ -1,0 +1,3 @@
+Hi! This is a work-in-progress attempt to make a more maintainable support-tracking and -billing app based on Made Media's FreshDesk API.
+
+The bulk of the app logic, including what makes tracked time billable or not, is in app.py.

@@ -51,10 +51,16 @@ def setup_google_sheets():
     return client
 
 
-@st.cache_resource(ttl=15, show_spinner="Getting rollover data…")
 def open_google_sheet(client, url):
     sheet = client.open_by_url(url)
     return sheet
+
+def check_google_sheet(client_code):    
+    client = setup_google_sheets()
+    sheet = open_google_sheet(client, st.secrets["private_gsheets_url"])
+    worksheet = sheet.get_worksheet(0)
+    data = worksheet.get_all_records()
+    st.write(data)
 
 
 @st.cache_resource(ttl=60*60*24*7, show_spinner="Getting client information…")
@@ -106,11 +112,16 @@ def display_client_selector(companies_options):
     return selected_client, selected_value, start_date, end_date
 
 
-def display_company_summary(selected_client, start_date):
-    start_date_datetime = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-    st.markdown(
-        f'### {selected_client} — {start_date_datetime.strftime("%B %Y")}')
-
+def display_company_summary(company_data):
+    company_name = company_data['name']
+    company_data_to_display = pd.DataFrame({
+        'Client Code': company_data['custom_fields']['company_code'],
+        'Support Contract': f"{company_data['custom_fields']['support_contract']}, paid annually" if company_data['custom_fields']['paid_annually'] else company_data['custom_fields']['support_contract'],
+        'Included Hours Per Month': company_data['custom_fields']['inclusive_hours'],
+        'Overage Rate': f"{company_data['custom_fields']['currency']} {company_data['custom_fields']['contract_hourly_rate']}/hour"
+    }, index=[company_name]).transpose()
+    f'# Made Media support report for {company_name}'
+    st.dataframe(company_data_to_display)
 
 def prepare_tickets_details(time_entries_data, product_options):
     tickets_details = []
@@ -176,7 +187,7 @@ def prepare_tickets_details(time_entries_data, product_options):
 
 
 
-def display_time_summary(tickets_details_df):
+def display_time_summary(tickets_details_df, company_data):
     col1, col2 = st.columns(2)
     with col1:
         st.metric("Total time this month",
@@ -195,26 +206,23 @@ def display_time_summary(tickets_details_df):
             invoice_tickets_str = ", ".join([f"[#{ticket_id}](https://mademedia.freshdesk.com/support/tickets/{ticket_id})" for ticket_id in invoice_ticket_ids])
         total_invoice_time = invoice_tickets["time_spent_this_month"].sum()
         total_invoice_time_str = "{:.1f}".format(total_invoice_time)
-        st.warning(f"Ticket{'s' if num_invoice_tickets > 1 else ''} {invoice_tickets_str} marked with billing status ‘Invoice’ {'have a total of' if num_invoice_tickets > 1 else 'has'} {total_invoice_time_str} hours tracked this month. This time is not included in the above total of billable hours.")
+        st.warning(f"Ticket{'s' if num_invoice_tickets > 1 else ''} {invoice_tickets_str} {'are' if num_invoice_tickets > 1 else 'is'} marked with billing status ‘Invoice’ and {'have a total of' if num_invoice_tickets > 1 else 'has'} {total_invoice_time_str} hours tracked this month. This time is not included in the above total of billable hours.")
 
 
 
 def main():
-    # client = setup_google_sheets()
-    # sheet = open_google_sheet(client, st.secrets["private_gsheets_url"])
-    # worksheet = sheet.get_worksheet(0)
-    # data = worksheet.get_all_records()
-    # st.write(data)
-
-
     companies_data = get_companies_data()
     companies_options = get_companies_options(companies_data)
+    
     products_data = get_products_data()
     product_options = get_product_options(products_data)
 
     selected_client, selected_value, start_date, end_date = display_client_selector(
         companies_options)
-    display_company_summary(selected_client, start_date)
+    selected_company = next((company for company in companies_data if company["id"] == selected_value), None)
+    company_data = {key: selected_company[key] for key in selected_company.keys()}
+    
+    display_company_summary(company_data)
 
     time_entries_data = get_time_entries_data(
         start_date, end_date, selected_value)
@@ -248,7 +256,7 @@ def main():
             })
             # tickets_details_df.set_index('ticket_id', inplace=True)
 
-            display_time_summary(tickets_details_df)
+            display_time_summary(tickets_details_df, company_data)
 
             st.markdown("#### Tickets with time tracked this month")
 

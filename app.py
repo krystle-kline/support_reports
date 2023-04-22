@@ -245,10 +245,8 @@ def display_time_summary(tickets_details_df, company_data):
     total_time = f"{tickets_details_df['time_spent_this_month'].sum():.1f} hours"
     billable_time = f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours"
 
-    rollover_time = "{:.1f} hours".format(float(
-        carryover_value)) if carryover_value is not None and carryover_value.replace(".", "", 1).isdigit() else None
-    net_time = "{:.1f} hours".format(tickets_details_df['billable_time_this_month'].sum(
-    ) - (float(carryover_value) if carryover_value is not None and carryover_value.replace('.', '', 1).isdigit() else 0)) if carryover_value is not None else None
+    rollover_time = "{:.1f} hours".format(float(carryover_value)) if carryover_value is not None and str(carryover_value).replace(".", "", 1).isdigit() else None
+    net_time = "{:.1f} hours".format(tickets_details_df['billable_time_this_month'].sum() - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0)) if carryover_value is not None else None
 
     now = datetime.datetime.now()
     start_date_year, start_date_month = map(int, start_date.split("-")[:2])
@@ -256,7 +254,7 @@ def display_time_summary(tickets_details_df, company_data):
         now.year == start_date_year and abs(now.month - start_date_month) <= 1)
     currency_symbol = get_currency_symbol(
         company_data['custom_fields']['currency'])
-    estimated_cost = f"{currency_symbol}{max(tickets_details_df['billable_time_this_month'].sum() - (float(carryover_value) if carryover_value is not None and carryover_value.replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']):,.2f}" if is_current_or_adjacent_month else None
+    estimated_cost = f"{currency_symbol}{max(tickets_details_df['billable_time_this_month'].sum() - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']):,.2f}" if is_current_or_adjacent_month else None
 
     time_summary_contents = {
         "Total time this month": total_time,

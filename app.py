@@ -50,17 +50,28 @@ def setup_google_sheets():
     client = gspread.authorize(creds)
     return client
 
-
 def open_google_sheet(client, url):
     sheet = client.open_by_url(url)
     return sheet
 
-def check_google_sheet(client_code):    
-    client = setup_google_sheets()
-    sheet = open_google_sheet(client, st.secrets["private_gsheets_url"])
-    worksheet = sheet.get_worksheet(0)
-    data = worksheet.get_all_records()
-    st.write(data)
+def get_client_data(worksheet, client_code):
+    headers = worksheet.row_values(1)
+    client_data = {}
+
+    for row in worksheet.get_all_records():
+        if row['client_code'] == client_code:
+            client_data = row
+            break
+
+    return client_data
+
+def get_contract_renews_date(worksheet, client_code):
+    client_codes = worksheet.col_values(1) # Assuming client_code is in the first column
+    for idx, code in enumerate(client_codes):
+        if code == client_code:
+            contract_renews_date = worksheet.cell(idx + 1, 2).value # Assuming contract_renews is in the second column
+            return contract_renews_date
+    return None
 
 
 @st.cache_resource(ttl=60*60*24*7, show_spinner="Getting client information…")
@@ -112,16 +123,31 @@ def display_client_selector(companies_options):
     return selected_client, selected_value, start_date, end_date
 
 
-def display_company_summary(company_data):
+def display_company_summary(company_data, start_date):
     company_name = company_data['name']
+    company_cfs = company_data['custom_fields']
+
+    client_code = company_cfs['company_code']
+    global client_info
+    client_info = get_client_data(worksheet, client_code)
+
+    contract_renews = client_info['contract_renews']
+    try:
+        client_renewal_date = datetime.datetime.strptime(contract_renews, "%B %Y")
+        client_renewal_date_formatted = client_renewal_date.strftime("%B %Y")
+    except:
+        client_renewal_date_formatted = None
+
     company_data_to_display = pd.DataFrame({
-        'Client Code': company_data['custom_fields']['company_code'],
-        'Support Contract': f"{company_data['custom_fields']['support_contract']}, paid annually" if company_data['custom_fields']['paid_annually'] else company_data['custom_fields']['support_contract'],
-        'Included Hours Per Month': company_data['custom_fields']['inclusive_hours'],
-        'Overage Rate': f"{company_data['custom_fields']['currency']} {company_data['custom_fields']['contract_hourly_rate']}/hour"
+        'Client Code': company_cfs['company_code'],
+        'Support Contract': f"{company_cfs['support_contract']}, paid annually" if company_cfs['paid_annually'] else company_cfs['support_contract'],
+        'Contract Renewal Date': client_renewal_date_formatted,
+        'Included Hours Per Month': company_cfs['inclusive_hours'],
+        'Overage Rate': f"{company_cfs['currency']} {company_cfs['contract_hourly_rate']}/hour"
     }, index=[company_name]).transpose()
-    f'# Made Media support report for {company_name}'
+    st.write(f'# Made Media support report for {company_name}')
     st.dataframe(company_data_to_display)
+
 
 def prepare_tickets_details(time_entries_data, product_options):
     tickets_details = []
@@ -185,16 +211,56 @@ def prepare_tickets_details(time_entries_data, product_options):
     return tickets_details
 
 
+def display_columns(time_summary_contents):
+    num_columns = len(time_summary_contents)
+    max_columns_per_row = 2 if num_columns == 4 else 3
+    num_rows = (num_columns + max_columns_per_row - 1) // max_columns_per_row
+
+    items = list(time_summary_contents.items())
+    
+    for row in range(num_rows):
+        start_idx = row * max_columns_per_row
+        end_idx = min(start_idx + max_columns_per_row, num_columns)
+        cols = st.columns(end_idx - start_idx)
+
+        for i, (label, value) in enumerate(items[start_idx:end_idx]):
+            with cols[i]:
+                st.metric(label, value)
+
 
 
 def display_time_summary(tickets_details_df, company_data):
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Total time this month",
-                  f"{tickets_details_df['time_spent_this_month'].sum():.1f} hours")
-    with col2:
-        st.metric("Billable time this month",
-                  f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours")
+    year, month, _ = start_date.split("-")
+    key = f"{year}_{month}_carryover"
+    carryover_value = client_info.get(key)
+
+    total_time = f"{tickets_details_df['time_spent_this_month'].sum():.1f} hours"
+    billable_time = f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours"
+
+    rollover_time = "{:.1f} hours".format(carryover_value) if carryover_value is not None else None
+    net_time = "{:.1f} hours".format(tickets_details_df['billable_time_this_month'].sum() - carryover_value) if carryover_value is not None else None
+
+    now = datetime.datetime.now()
+    start_date_year, start_date_month = map(int, start_date.split("-")[:2])
+    is_current_or_adjacent_month = (now.year == start_date_year and abs(now.month - start_date_month) <= 1)
+    estimated_cost = f"{company_data['custom_fields']['currency']} {max(tickets_details_df['billable_time_this_month'].sum() - (carryover_value or 0), 0) * company_data['custom_fields']['contract_hourly_rate']:,.2f}" if is_current_or_adjacent_month else None
+
+    time_summary_contents = {
+            "Total time this month": total_time,
+            "Billable time this month": billable_time,
+        }
+
+    if rollover_time is not None:
+        time_summary_contents["Rollover time available"] = rollover_time
+
+    if estimated_cost is not None:
+        time_summary_contents["Estimated cost this month"] = estimated_cost
+
+    display_columns(time_summary_contents)
+
+
+    
+    # warn if any tickets with time tracked are marked "Invoice"
     if not tickets_details_df[tickets_details_df["billing_status"] == "Invoice"].empty:
         invoice_tickets = tickets_details_df[tickets_details_df["billing_status"] == "Invoice"]
         num_invoice_tickets = len(invoice_tickets)
@@ -211,18 +277,24 @@ def display_time_summary(tickets_details_df, company_data):
 
 
 def main():
+    client = setup_google_sheets()
+    sheet = open_google_sheet(client, st.secrets["private_gsheets_url"])
+    global worksheet
+    worksheet = sheet.get_worksheet(0)
+
     companies_data = get_companies_data()
     companies_options = get_companies_options(companies_data)
-    
     products_data = get_products_data()
     product_options = get_product_options(products_data)
 
+    global start_date
     selected_client, selected_value, start_date, end_date = display_client_selector(
         companies_options)
     selected_company = next((company for company in companies_data if company["id"] == selected_value), None)
     company_data = {key: selected_company[key] for key in selected_company.keys()}
     
-    display_company_summary(company_data)
+
+    display_company_summary(company_data, start_date)
 
     time_entries_data = get_time_entries_data(
         start_date, end_date, selected_value)

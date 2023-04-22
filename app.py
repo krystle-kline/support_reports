@@ -102,7 +102,7 @@ def display_time_summary(tickets_details_df, company_data):
 
 
 def main():
-    st.set_page_config(layout="wide") 
+    st.set_page_config(layout="wide", page_icon=":bar_chart:")
     st.title("Made Media support report")
 
     client = setup_google_sheets()

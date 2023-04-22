@@ -58,3 +58,27 @@ def get_paginated(url, api_key):
         if link_header:
             next_url = link_header.split(';')[0].strip('<').strip('>')
             yield from get_paginated(next_url, api_key)
+
+
+@st.cache_resource(ttl=60*60*24*7, show_spinner="Getting client information…")
+def get_companies_data():
+    companies_url = f'{base_url}/companies'
+    companies_data = []
+    for page_data in get_paginated(companies_url, api_key):
+        companies_data.extend(page_data)
+    return companies_data
+
+
+def get_companies_options(companies_data):
+    companies_options = {}
+    for company_data in companies_data:
+        companies_options[company_data['name']] = company_data['id']
+    return companies_options
+
+
+@st.cache_resource(ttl=60*60*24*7, show_spinner="Getting time entry information…")
+def get_time_entries_data(start_date, end_date, selected_value):
+    time_entries_url = f'{base_url}/time_entries?executed_before={end_date}&executed_after={start_date}&company_id={selected_value}'
+    time_entries_data = [page_data for sublist in get_paginated(
+        time_entries_url, api_key) for page_data in sublist]
+    return time_entries_data

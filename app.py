@@ -2,34 +2,10 @@ import pandas as pd
 import streamlit as st
 import datetime
 from config import base_url, status_mapping
-from api import get_ticket_data, get_agent_data, get_requester_data, get_group_data, get_paginated, get_products_data
+from api import get_ticket_data, get_agent_data, get_requester_data, get_group_data, get_paginated, get_products_data, get_product_options,get_companies_data,get_companies_options,get_time_entries_data
 from utils import date_range_selector, get_currency_symbol, setup_google_sheets, open_google_sheet, get_client_data, get_contract_renews_date, display_columns, get_product_options, prepare_tickets_details, calculate_billable_time
 
 api_key = st.secrets["api_key"]
-
-
-@st.cache_resource(ttl=60*60*24*7, show_spinner="Getting client information…")
-def get_companies_data():
-    companies_url = f'{base_url}/companies'
-    companies_data = []
-    for page_data in get_paginated(companies_url, api_key):
-        companies_data.extend(page_data)
-    return companies_data
-
-
-def get_companies_options(companies_data):
-    companies_options = {}
-    for company_data in companies_data:
-        companies_options[company_data['name']] = company_data['id']
-    return companies_options
-
-
-@st.cache_resource(ttl=60*60*24*7, show_spinner="Getting time entry information…")
-def get_time_entries_data(start_date, end_date, selected_value):
-    time_entries_url = f'{base_url}/time_entries?executed_before={end_date}&executed_after={start_date}&company_id={selected_value}'
-    time_entries_data = [page_data for sublist in get_paginated(
-        time_entries_url, api_key) for page_data in sublist]
-    return time_entries_data
 
 
 def display_client_selector(companies_options):
@@ -91,7 +67,9 @@ def display_time_summary(tickets_details_df, company_data):
     currency_symbol = get_currency_symbol(
         company_data['custom_fields']['currency'])
     total_billable_hours = tickets_details_df['billable_time_this_month'].sum() - company_data['custom_fields'].get('inclusive_hours', 0)
-    estimated_cost = f"{currency_symbol}{max(tickets_details_df['billable_time_this_month'].sum() - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']) if is_current_or_adjacent_month and company_data['custom_fields']['contract_hourly_rate'] is not None else 0.00:,.2f}"
+    estimated_cost = f"{currency_symbol}{max(total_billable_hours - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']) if is_current_or_adjacent_month and company_data['custom_fields']['contract_hourly_rate'] is not None else 0.00:,.2f}"
+
+
 
 
     time_summary_contents = {

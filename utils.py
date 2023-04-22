@@ -10,16 +10,23 @@ from config import base_url, status_mapping
 
 
 def calculate_billable_time(time_entry):
-    # This function takes a time entry and returns the number of hours that should be billed to the client for it
+    """
+    This function takes a time entry and returns the number of hours that should be billed to the client for it
+    """
+
+    # Here's the data we need:
     ticket_data = get_ticket_data(time_entry["ticket_id"])
     product_id = ticket_data["product_id"]
     product_name = get_product_options(get_products_data())[product_id]
     change_request = ticket_data["custom_fields"].get("change_request", False)
     time_spent = time_entry["time_spent_in_seconds"] / 3600
-    saas_products = ["BlocksOffice", "MonkeyWrench"]
-    unbillable_billing_statuses = ["Free", "90 Days", "Invoice"]
     billing_status = ticket_data["custom_fields"].get("billing_status")
 
+    # And here's some config:
+    saas_products = ["BlocksOffice", "MonkeyWrench"]
+    unbillable_billing_statuses = ["Free", "90 Days", "Invoice"]
+
+    # Now we can work out whether the time entry is billable or not:
     if billing_status in unbillable_billing_statuses:
         return 0
         # If the ticket is has one of these billing statuses in FreshDesk, it's definitely not billable
@@ -40,8 +47,7 @@ def calculate_billable_time(time_entry):
 
 def date_range_selector(label, start_date, end_date):
     """
-    A Streamlit widget for selecting a month and year, and returning the start
-    and end dates of the selected month.
+    A  widget for selecting a month and year, and returning the start and end dates of the selected month
     """
     default_date = datetime.datetime.now().replace(day=1)
     month_options = [(datetime.datetime.now() - timedelta(days=30*i)

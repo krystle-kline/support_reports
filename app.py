@@ -3,9 +3,7 @@ import streamlit as st
 import datetime
 from config import base_url, status_mapping
 from api import get_ticket_data, get_agent_data, get_requester_data, get_group_data
-from utils import date_range_selector, get_paginated, get_currency_symbol
-import gspread
-from google.oauth2.service_account import Credentials
+from utils import date_range_selector, get_paginated, get_currency_symbol, setup_google_sheets, open_google_sheet, get_client_data, get_contract_renews_date
 
 api_key = st.secrets["api_key"]
 
@@ -37,46 +35,6 @@ def calculate_billable_time(time_entry):
         return 0
         # Otherwise, it's not billable
 
-
-def setup_google_sheets():
-    scopes = [
-        'https://www.googleapis.com/auth/spreadsheets',
-        'https://www.googleapis.com/auth/drive'
-    ]
-    creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=scopes
-    )
-    client = gspread.authorize(creds)
-    return client
-
-
-def open_google_sheet(client, url):
-    sheet = client.open_by_url(url)
-    return sheet
-
-
-def get_client_data(worksheet, client_code):
-    headers = worksheet.row_values(1)
-    client_data = {}
-
-    for row in worksheet.get_all_records():
-        if row['client_code'] == client_code:
-            client_data = row
-            break
-
-    return client_data
-
-
-def get_contract_renews_date(worksheet, client_code):
-    # Assuming client_code is in the first column
-    client_codes = worksheet.col_values(1)
-    for idx, code in enumerate(client_codes):
-        if code == client_code:
-            # Assuming contract_renews is in the second column
-            contract_renews_date = worksheet.cell(idx + 1, 2).value
-            return contract_renews_date
-    return None
 
 
 @st.cache_resource(ttl=60*60*24*7, show_spinner="Getting client information…")
@@ -145,15 +103,16 @@ def display_company_summary(company_data, start_date):
     except:
         client_renewal_date_formatted = None
 
-    company_data_to_display = pd.DataFrame({
+    company_data_to_display = {
         'Client Code': company_cfs['company_code'],
         'Support Contract': f"{company_cfs['support_contract']}, paid annually" if company_cfs['paid_annually'] else company_cfs['support_contract'],
         'Contract Renewal Date': client_renewal_date_formatted,
         'Included Hours Per Month': company_cfs['inclusive_hours'],
         'Overage Rate': f"{company_cfs['currency']} {company_cfs['contract_hourly_rate']}/hour"
-    }, index=[company_name]).transpose()
-    st.write(f'# Made Media support report for {company_name}')
-    st.dataframe(company_data_to_display)
+    }
+    formatted_date = datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%B %Y')
+    st.write(f'## {company_name} — {formatted_date}')
+    company_data_to_display
 
 
 def prepare_tickets_details(time_entries_data, product_options):
@@ -222,7 +181,7 @@ def prepare_tickets_details(time_entries_data, product_options):
 
 def display_columns(time_summary_contents):
     num_columns = len(time_summary_contents)
-    max_columns_per_row = 2 if num_columns == 4 else 3
+    max_columns_per_row = 4 if num_columns == 4 else 3
     num_rows = (num_columns + max_columns_per_row - 1) // max_columns_per_row
 
     items = list(time_summary_contents.items())
@@ -254,7 +213,9 @@ def display_time_summary(tickets_details_df, company_data):
         now.year == start_date_year and abs(now.month - start_date_month) <= 1)
     currency_symbol = get_currency_symbol(
         company_data['custom_fields']['currency'])
-    estimated_cost = f"{currency_symbol}{max(tickets_details_df['billable_time_this_month'].sum() - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']):,.2f}" if is_current_or_adjacent_month else None
+    total_billable_hours = tickets_details_df['billable_time_this_month'].sum() - company_data['custom_fields'].get('inclusive_hours', 0)
+    estimated_cost = f"{currency_symbol}{max(tickets_details_df['billable_time_this_month'].sum() - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']) if is_current_or_adjacent_month and company_data['custom_fields']['contract_hourly_rate'] is not None else 0.00:,.2f}"
+
 
     time_summary_contents = {
         "Total time this month": total_time,
@@ -286,6 +247,9 @@ def display_time_summary(tickets_details_df, company_data):
 
 
 def main():
+    st.set_page_config(layout="wide") 
+    st.title("Made Media support report")
+
     client = setup_google_sheets()
     sheet = open_google_sheet(client, st.secrets["private_gsheets_url"])
     global worksheet

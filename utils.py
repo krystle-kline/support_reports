@@ -3,6 +3,9 @@ from datetime import timedelta
 import calendar
 import streamlit as st
 import requests
+import gspread
+from google.oauth2.service_account import Credentials
+
 
 def date_range_selector(label, start_date, end_date):
     """
@@ -44,3 +47,43 @@ def get_currency_symbol(currency_code):
         'EUR': '€'
     }
     return currency_symbols.get(currency_code, currency_code)
+
+
+def setup_google_sheets():
+    scopes = [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/drive'
+    ]
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"],
+        scopes=scopes
+    )
+    client = gspread.authorize(creds)
+    return client
+
+
+def open_google_sheet(client, url):
+    sheet = client.open_by_url(url)
+    return sheet
+
+
+def get_client_data(worksheet, client_code):
+    headers = worksheet.row_values(1)
+    client_data = {}
+
+    for row in worksheet.get_all_records():
+        if row['client_code'] == client_code:
+            client_data = row
+            break
+
+    return client_data
+
+def get_contract_renews_date(worksheet, client_code):
+    # Assuming client_code is in the first column
+    client_codes = worksheet.col_values(1)
+    for idx, code in enumerate(client_codes):
+        if code == client_code:
+            # Assuming contract_renews is in the second column
+            contract_renews_date = worksheet.cell(idx + 1, 2).value
+            return contract_renews_date
+    return None

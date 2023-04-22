@@ -3,7 +3,7 @@ import streamlit as st
 import datetime
 from config import base_url, status_mapping
 from api import get_ticket_data, get_agent_data, get_requester_data, get_group_data
-from utils import date_range_selector, get_paginated
+from utils import date_range_selector, get_paginated, get_currency_symbol
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -50,9 +50,11 @@ def setup_google_sheets():
     client = gspread.authorize(creds)
     return client
 
+
 def open_google_sheet(client, url):
     sheet = client.open_by_url(url)
     return sheet
+
 
 def get_client_data(worksheet, client_code):
     headers = worksheet.row_values(1)
@@ -65,11 +67,14 @@ def get_client_data(worksheet, client_code):
 
     return client_data
 
+
 def get_contract_renews_date(worksheet, client_code):
-    client_codes = worksheet.col_values(1) # Assuming client_code is in the first column
+    # Assuming client_code is in the first column
+    client_codes = worksheet.col_values(1)
     for idx, code in enumerate(client_codes):
         if code == client_code:
-            contract_renews_date = worksheet.cell(idx + 1, 2).value # Assuming contract_renews is in the second column
+            # Assuming contract_renews is in the second column
+            contract_renews_date = worksheet.cell(idx + 1, 2).value
             return contract_renews_date
     return None
 
@@ -131,9 +136,11 @@ def display_company_summary(company_data, start_date):
     global client_info
     client_info = get_client_data(worksheet, client_code)
 
-    contract_renews = client_info['contract_renews']
+    contract_renews = client_info.get('contract_renews')
+
     try:
-        client_renewal_date = datetime.datetime.strptime(contract_renews, "%B %Y")
+        client_renewal_date = datetime.datetime.strptime(
+            contract_renews, "%B %Y")
         client_renewal_date_formatted = client_renewal_date.strftime("%B %Y")
     except:
         client_renewal_date_formatted = None
@@ -181,8 +188,10 @@ def prepare_tickets_details(time_entries_data, product_options):
             ticket_category = ticket_data["custom_fields"].get(
                 "category", "Unknown")
             ticket_type = ticket_data.get("type", "Unknown")
-            billing_status = ticket_data["custom_fields"].get("billing_status", "Unknown")
-            cf_client_deadline = ticket_data["custom_fields"].get("cf_client_deadline", None)
+            billing_status = ticket_data["custom_fields"].get(
+                "billing_status", "Unknown")
+            cf_client_deadline = ticket_data["custom_fields"].get(
+                "cf_client_deadline", None)
             tags = ticket_data.get("tags", [])
 
             tickets_details.append({
@@ -217,7 +226,7 @@ def display_columns(time_summary_contents):
     num_rows = (num_columns + max_columns_per_row - 1) // max_columns_per_row
 
     items = list(time_summary_contents.items())
-    
+
     for row in range(num_rows):
         start_idx = row * max_columns_per_row
         end_idx = min(start_idx + max_columns_per_row, num_columns)
@@ -228,7 +237,6 @@ def display_columns(time_summary_contents):
                 st.metric(label, value)
 
 
-
 def display_time_summary(tickets_details_df, company_data):
     year, month, _ = start_date.split("-")
     key = f"{year}_{month}_carryover"
@@ -237,29 +245,32 @@ def display_time_summary(tickets_details_df, company_data):
     total_time = f"{tickets_details_df['time_spent_this_month'].sum():.1f} hours"
     billable_time = f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours"
 
-    rollover_time = "{:.1f} hours".format(carryover_value) if carryover_value is not None else None
-    net_time = "{:.1f} hours".format(tickets_details_df['billable_time_this_month'].sum() - carryover_value) if carryover_value is not None else None
+    rollover_time = "{:.1f} hours".format(float(
+        carryover_value)) if carryover_value is not None and carryover_value.replace(".", "", 1).isdigit() else None
+    net_time = "{:.1f} hours".format(tickets_details_df['billable_time_this_month'].sum(
+    ) - (float(carryover_value) if carryover_value is not None and carryover_value.replace('.', '', 1).isdigit() else 0)) if carryover_value is not None else None
 
     now = datetime.datetime.now()
     start_date_year, start_date_month = map(int, start_date.split("-")[:2])
-    is_current_or_adjacent_month = (now.year == start_date_year and abs(now.month - start_date_month) <= 1)
-    estimated_cost = f"{company_data['custom_fields']['currency']} {max(tickets_details_df['billable_time_this_month'].sum() - (carryover_value or 0), 0) * company_data['custom_fields']['contract_hourly_rate']:,.2f}" if is_current_or_adjacent_month else None
+    is_current_or_adjacent_month = (
+        now.year == start_date_year and abs(now.month - start_date_month) <= 1)
+    currency_symbol = get_currency_symbol(
+        company_data['custom_fields']['currency'])
+    estimated_cost = f"{currency_symbol}{max(tickets_details_df['billable_time_this_month'].sum() - (float(carryover_value) if carryover_value is not None and carryover_value.replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']):,.2f}" if is_current_or_adjacent_month else None
 
     time_summary_contents = {
-            "Total time this month": total_time,
-            "Billable time this month": billable_time,
-        }
+        "Total time this month": total_time,
+        "Billable time this month": billable_time,
+    }
 
     if rollover_time is not None:
         time_summary_contents["Rollover time available"] = rollover_time
 
-    if estimated_cost is not None:
+    if is_current_or_adjacent_month and company_data['custom_fields']['contract_hourly_rate'] is not None:
         time_summary_contents["Estimated cost this month"] = estimated_cost
 
     display_columns(time_summary_contents)
 
-
-    
     # warn if any tickets with time tracked are marked "Invoice"
     if not tickets_details_df[tickets_details_df["billing_status"] == "Invoice"].empty:
         invoice_tickets = tickets_details_df[tickets_details_df["billing_status"] == "Invoice"]
@@ -269,11 +280,11 @@ def display_time_summary(tickets_details_df, company_data):
             invoice_tickets_str = f"[#{ticket_id}](https://mademedia.freshdesk.com/support/tickets/{ticket_id})"
         else:
             invoice_ticket_ids = invoice_tickets["ticket_id"].tolist()
-            invoice_tickets_str = ", ".join([f"[#{ticket_id}](https://mademedia.freshdesk.com/support/tickets/{ticket_id})" for ticket_id in invoice_ticket_ids])
+            invoice_tickets_str = ", ".join(
+                [f"[#{ticket_id}](https://mademedia.freshdesk.com/support/tickets/{ticket_id})" for ticket_id in invoice_ticket_ids])
         total_invoice_time = invoice_tickets["time_spent_this_month"].sum()
         total_invoice_time_str = "{:.1f}".format(total_invoice_time)
         st.warning(f"Ticket{'s' if num_invoice_tickets > 1 else ''} {invoice_tickets_str} {'are' if num_invoice_tickets > 1 else 'is'} marked with billing status ‘Invoice’ and {'have a total of' if num_invoice_tickets > 1 else 'has'} {total_invoice_time_str} hours tracked this month. This time is not included in the above total of billable hours.")
-
 
 
 def main():
@@ -290,9 +301,10 @@ def main():
     global start_date
     selected_client, selected_value, start_date, end_date = display_client_selector(
         companies_options)
-    selected_company = next((company for company in companies_data if company["id"] == selected_value), None)
-    company_data = {key: selected_company[key] for key in selected_company.keys()}
-    
+    selected_company = next(
+        (company for company in companies_data if company["id"] == selected_value), None)
+    company_data = {key: selected_company[key]
+                    for key in selected_company.keys()}
 
     display_company_summary(company_data, start_date)
 
@@ -335,7 +347,7 @@ def main():
             formatted_tickets_details_df = tickets_details_df.copy()
 
             st.dataframe(formatted_tickets_details_df)
-            
+
         else:
             st.write("Uh-oh, I couldn't find any tickets that match the time entries tracked this month. This probably means something is wrong with me 🤖")
     else:

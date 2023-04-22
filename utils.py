@@ -34,3 +34,13 @@ def get_paginated(url, api_key):
         if link_header:
             next_url = link_header.split(';')[0].strip('<').strip('>')
             yield from get_paginated(next_url, api_key)
+
+def get_currency_symbol(currency_code):
+    currency_symbols = {
+        'AUD': 'A$',
+        'USD': '$',
+        'CAD': 'C$',
+        'GBP': '£',
+        'EUR': '€'
+    }
+    return currency_symbols.get(currency_code, currency_code)

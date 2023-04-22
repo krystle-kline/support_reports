@@ -11,7 +11,13 @@ from config import base_url, status_mapping
 
 def calculate_billable_time(time_entry):
     """
-    This function takes a time entry and returns the number of hours that should be billed to the client for it
+    Takes a time entry and returns the number of hours that should be billed to the client for it
+
+    Args:
+        time_entry (dict): A time entry from the FreshDesk API
+    
+    Returns:
+        billable_time (float): The number of hours that should be billed to the client for this time entry
     """
 
     # Here's the data we need:
@@ -48,6 +54,15 @@ def calculate_billable_time(time_entry):
 def date_range_selector(label, start_date, end_date):
     """
     A  widget for selecting a month and year, and returning the start and end dates of the selected month
+
+    Args:
+        label (str): The label for the widget
+        start_date (str): The start date of the range, in the format YYYY-MM-DD
+        end_date (str): The end date of the range, in the format YYYY-MM-DD
+    
+    Returns:
+        start_date (str): The start date of the range, in the format YYYY-MM-DD
+        end_date (str): The end date of the range, in the format YYYY-MM-DD
     """
     default_date = datetime.datetime.now().replace(day=1)
     month_options = [(datetime.datetime.now() - timedelta(days=30*i)
@@ -133,6 +148,16 @@ def display_columns(time_summary_contents):
 
 
 def prepare_tickets_details(time_entries_data, product_options):
+    """
+    Get the details of the tickets that the time entries are associated with
+
+    Args:
+        time_entries_data (list): A list of time entries
+        product_options (dict): A dictionary of product IDs and names
+    
+    Returns:
+        tickets_details (list): A list of ticket details
+    """
     tickets_details = []
 
     for time_entry in time_entries_data:

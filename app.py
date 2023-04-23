@@ -39,7 +39,7 @@ def display_company_summary(company_data, start_date):
     company_data_to_display = {
         'Client Code': company_cfs['company_code'],
         'Support Contract': f"{company_cfs['support_contract']}, paid annually" if company_cfs['paid_annually'] else company_cfs['support_contract'],
-        'Contract Renewal Date': client_renewal_date_formatted,
+        # 'Contract Renewal Date': client_renewal_date_formatted,
         'Included Hours Per Month': company_cfs['inclusive_hours'],
         'Overage Rate': f"{company_cfs['currency']} {company_cfs['contract_hourly_rate']}/hour"
     }

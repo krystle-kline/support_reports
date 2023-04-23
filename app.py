@@ -49,7 +49,7 @@ def display_company_summary(company_data, start_date):
     
     col1, col2 = st.columns(2)
     with col1:
-        "##### Data from FreshDesk:"
+        f"##### Data from [FreshDesk](https://mademedia.freshdesk.com/a/companies/{selected_value}):"
         company_data_to_display
     
 
@@ -125,13 +125,13 @@ def main():
     product_options = get_product_options(products_data)
 
     global start_date
-    selected_client, selected_value, start_date, end_date = display_client_selector(
+    global selected_value
+    iselected_client, selected_value, start_date, end_date = display_client_selector(
         companies_options)
     selected_company = next(
         (company for company in companies_data if company["id"] == selected_value), None)
     company_data = {key: selected_company[key]
                     for key in selected_company.keys()}
-
     display_company_summary(company_data, start_date)
 
     time_entries_data = get_time_entries_data(

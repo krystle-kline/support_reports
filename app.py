@@ -2,7 +2,7 @@ import pandas as pd
 import streamlit as st
 import datetime
 from config import base_url, status_mapping
-from api import get_ticket_data, get_agent_data, get_requester_data, get_group_data, get_paginated, get_products_data, get_product_options,get_companies_data,get_companies_options,get_time_entries_data
+from api import get_ticket_data, get_tickets_data, get_agent_data, get_requester_data, get_group_data, get_paginated, get_products_data, get_product_options, get_companies_data, get_companies_options, get_time_entries_data
 from utils import date_range_selector, get_currency_symbol, setup_google_sheets, open_google_sheet, get_client_data, get_contract_renews_date, display_columns, get_product_options, prepare_tickets_details, calculate_billable_time
 
 api_key = st.secrets["api_key"]
@@ -43,10 +43,10 @@ def display_company_summary(company_data, start_date):
         'Included Hours Per Month': company_cfs['inclusive_hours'],
         'Overage Rate': f"{company_cfs['currency']} {company_cfs['contract_hourly_rate']}/hour"
     }
-    formatted_date = datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%B %Y')
+    formatted_date = datetime.datetime.strptime(
+        start_date, '%Y-%m-%d').strftime('%B %Y')
     st.write(f'## {company_name} — {formatted_date}')
     company_data_to_display
-
 
 
 def display_time_summary(tickets_details_df, company_data):
@@ -57,8 +57,10 @@ def display_time_summary(tickets_details_df, company_data):
     total_time = f"{tickets_details_df['time_spent_this_month'].sum():.1f} hours"
     billable_time = f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours"
 
-    rollover_time = "{:.1f} hours".format(float(carryover_value)) if carryover_value is not None and str(carryover_value).replace(".", "", 1).isdigit() else None
-    net_time = "{:.1f} hours".format(tickets_details_df['billable_time_this_month'].sum() - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0)) if carryover_value is not None else None
+    rollover_time = "{:.1f} hours".format(float(carryover_value)) if carryover_value is not None and str(
+        carryover_value).replace(".", "", 1).isdigit() else None
+    net_time = "{:.1f} hours".format(tickets_details_df['billable_time_this_month'].sum(
+    ) - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0)) if carryover_value is not None else None
 
     now = datetime.datetime.now()
     start_date_year, start_date_month = map(int, start_date.split("-")[:2])
@@ -66,11 +68,9 @@ def display_time_summary(tickets_details_df, company_data):
         now.year == start_date_year and abs(now.month - start_date_month) <= 1)
     currency_symbol = get_currency_symbol(
         company_data['custom_fields']['currency'])
-    total_billable_hours = tickets_details_df['billable_time_this_month'].sum() - company_data['custom_fields'].get('inclusive_hours', 0)
+    total_billable_hours = tickets_details_df['billable_time_this_month'].sum(
+    ) - company_data['custom_fields'].get('inclusive_hours', 0)
     estimated_cost = f"{currency_symbol}{max(total_billable_hours - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']) if is_current_or_adjacent_month and company_data['custom_fields']['contract_hourly_rate'] is not None else 0.00:,.2f}"
-
-
-
 
     time_summary_contents = {
         "Total time this month": total_time,
@@ -155,7 +155,6 @@ def main():
                 'time_spent_this_month': 'float',
                 'billable_time_this_month': 'float'
             })
-            # tickets_details_df.set_index('ticket_id', inplace=True)
 
             display_time_summary(tickets_details_df, company_data)
 
@@ -163,10 +162,15 @@ def main():
 
             formatted_tickets_details_df = tickets_details_df.copy()
 
-            st.dataframe(formatted_tickets_details_df)
+            formatted_tickets_details_df = (
+                formatted_tickets_details_df.style
+                .format(precision=1)
+            )
+            formatted_tickets_details_df
 
         else:
             st.write("Uh-oh, I couldn't find any tickets that match the time entries tracked this month. This probably means something is wrong with me 🤖")
+
     else:
         st.write("No time tracked for this month")
 

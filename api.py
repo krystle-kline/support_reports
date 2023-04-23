@@ -1,8 +1,12 @@
+"""This file handles all the interaction with the FreshDesk API."""
+
 import streamlit as st
 import requests
 from config import base_url
+import datetime
 
 api_key = st.secrets["api_key"]
+
 
 @st.cache_resource(ttl=60*60, show_spinner="Getting ticket data…")
 def get_ticket_data(ticket_id):
@@ -10,17 +14,49 @@ def get_ticket_data(ticket_id):
     ticket_data, _ = get_data_from_api(ticket_url, api_key)
     return ticket_data
 
+
+@st.cache_resource(ttl=60*60, show_spinner="Getting ticket data…")
+def get_tickets_data(updated_since=None, per_page=100, order_by='updated_at', order_type='desc', include='stats,requester,description'):
+    if updated_since is None:
+        # Get tickets from the last 90 days
+        date = datetime.datetime.now() - datetime.timedelta(days=90)
+        date = date.replace(year=date.year, month=1, day=1, hour=16, minute=20)
+        date_utc = date.astimezone(datetime.timezone.utc)
+        updated_since = date_utc.strftime('%Y-%m-%dT%H:%M:%SZ')
+    tickets_url = f'{base_url}/tickets/?per_page={per_page}&order_by={order_by}&order_type={order_type}&include={include}&updated_since={updated_since}'
+    tickets_data = []
+    for page_data in get_paginated(tickets_url, api_key):
+        tickets_data.extend(page_data)
+    return tickets_data
+
+
+
+@st.cache_resource(ttl=60*60, show_spinner="Searching for tickets…")
+def search_tickets(query):
+    """
+    More information: https://developers.freshdesk.com/api/#filter_tickets
+    """
+    encoded_query = urllib.parse.quote(query) 
+    search_url = f'{base_url}/search/tickets?query="{encoded_query}"'
+    tickets_data = []
+    for page_data in get_paginated(search_url, api_key):
+        tickets_data.extend(page_data)
+    return tickets_data
+
+
 @st.cache_resource(ttl=60*60*24*7, show_spinner="Getting agent data…")
 def get_agent_data(agent_id):
     agent_url = f'{base_url}/agents/{agent_id}'
     agent_data, _ = get_data_from_api(agent_url, api_key)
     return agent_data
 
+
 @st.cache_resource(ttl=60*60*24*7, show_spinner="Getting group data…")
 def get_group_data(group_id):
     group_url = f'{base_url}/groups/{group_id}'
     group_data, _ = get_data_from_api(group_url, api_key)
     return group_data
+
 
 @st.cache_resource(ttl=60*60*24*7, show_spinner="Getting information about this Made product…")
 def get_products_data():
@@ -29,10 +65,12 @@ def get_products_data():
         products_url, api_key) for page_data in sublist]
     return products_data
 
+
 def get_product_options(products_data):
     product_options = {product['id']: product['name']
                        for product in products_data}
     return product_options
+
 
 @st.cache_resource(ttl=60*60*24*7, show_spinner="Getting requester data…")
 def get_requester_data(requester_id):

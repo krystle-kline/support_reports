@@ -78,7 +78,9 @@ def display_time_summary(tickets_details_df, company_data):
     currency_symbol = get_currency_symbol(
         company_data['custom_fields']['currency'])
     total_billable_hours = tickets_details_df['billable_time_this_month'].sum(
-    ) - company_data['custom_fields'].get('inclusive_hours', 0)
+    ) - float(company_data['custom_fields'].get('inclusive_hours') or 0)
+
+
     estimated_cost = f"{currency_symbol}{max(total_billable_hours - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']) if is_current_or_adjacent_month and company_data['custom_fields']['contract_hourly_rate'] is not None else 0.00:,.2f}"
 
     time_summary_contents = {
@@ -175,7 +177,8 @@ def main():
                 formatted_tickets_details_df.style
                 .format(precision=1)
             )
-            formatted_tickets_details_df
+            # st.markdown(formatted_tickets_details_df.to_html(render_links=True), unsafe_allow_html=True)
+            tickets_details_df
 
         else:
             st.write("Uh-oh, I couldn't find any tickets that match the time entries tracked this month. This probably means something is wrong with me 🤖")

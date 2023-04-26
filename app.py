@@ -100,13 +100,10 @@ def display_time_summary(tickets_details_df, company_data):
     if not tickets_details_df[tickets_details_df["billing_status"] == "Invoice"].empty:
         invoice_tickets = tickets_details_df[tickets_details_df["billing_status"] == "Invoice"]
         num_invoice_tickets = len(invoice_tickets)
-        if num_invoice_tickets == 1:
-            ticket_id = invoice_tickets["ticket_id"].iloc[0]
-            invoice_tickets_str = f"[#{ticket_id}](https://mademedia.freshdesk.com/support/tickets/{ticket_id})"
-        else:
-            invoice_ticket_ids = invoice_tickets["ticket_id"].tolist()
-            invoice_tickets_str = ", ".join(
-                [f"[#{ticket_id}](https://mademedia.freshdesk.com/support/tickets/{ticket_id})" for ticket_id in invoice_ticket_ids])
+        invoice_ticket_ids = invoice_tickets["ticket_id"].tolist()
+        invoice_tickets_str = ", ".join(
+            [f"[#{ticket_id}](https://mademedia.freshdesk.com/support/tickets/{ticket_id})" for ticket_id in invoice_ticket_ids])
+
         total_invoice_time = invoice_tickets["time_spent_this_month"].sum()
         total_invoice_time_str = "{:.1f}".format(total_invoice_time)
         st.warning(f"Ticket{'s' if num_invoice_tickets > 1 else ''} {invoice_tickets_str} {'are' if num_invoice_tickets > 1 else 'is'} marked with billing status ‘Invoice’ and {'have a total of' if num_invoice_tickets > 1 else 'has'} {total_invoice_time_str} hours tracked this month. This time is not included in the above total of billable hours.")

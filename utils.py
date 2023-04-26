@@ -30,7 +30,7 @@ def calculate_billable_time(time_entry):
 
     # And here's some config:
     saas_products = ["BlocksOffice", "MonkeyWrench"]
-    unbillable_billing_statuses = ["Free", "90 Days", "Invoice"]
+    unbillable_billing_statuses = ["Free", "90 days", "Invoice"]
 
     # Now we can work out whether the time entry is billable or not:
     if billing_status in unbillable_billing_statuses:

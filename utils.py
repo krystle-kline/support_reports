@@ -147,18 +147,23 @@ def display_columns(time_summary_contents):
                 st.metric(label, value)
 
 
-def prepare_tickets_details(time_entries_data, product_options):
+def prepare_tickets_details(time_entries_data, product_options, progress=None, progress_text=None):
     """
     Get the details of the tickets that the time entries are associated with
 
     Args:
         time_entries_data (list): A list of time entries
         product_options (dict): A dictionary of product IDs and names
+        progress (streamlit.Progress): An optional streamlit progress object
+        progress_text (str or None): An optional streamlit progress text object
     
     Returns:
         tickets_details (list): A list of ticket details
     """
     tickets_details = []
+
+    total_entries = len(time_entries_data)
+    completed_entries = 0
 
     for time_entry in time_entries_data:
         ticket_id = time_entry['ticket_id']
@@ -166,6 +171,7 @@ def prepare_tickets_details(time_entries_data, product_options):
             (item for item in tickets_details if item["ticket_id"] == ticket_id), None)
 
         if not found_ticket:
+            progress_text = f"Getting data for ticket #{ticket_id}…"
             ticket_data = get_ticket_data(ticket_id)
             product_name = product_options.get(
                 ticket_data["product_id"], "Unknown")
@@ -217,5 +223,10 @@ def prepare_tickets_details(time_entries_data, product_options):
             found_ticket["time_spent_this_month"] += time_entry["time_spent_in_seconds"] / 3600
             found_ticket["billable_time_this_month"] += calculate_billable_time(
                 time_entry)
+
+    
+        completed_entries += 1
+        if progress:
+            progress.progress(completed_entries / total_entries, text=progress_text)
 
     return tickets_details

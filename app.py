@@ -33,9 +33,12 @@ def display_company_summary(company_data, start_date):
     contract_renews = client_info.get('contract_renews')
 
     try:
-        client_renewal_date = datetime.datetime.strptime(
-            contract_renews, "%B %Y")
-        client_renewal_date_formatted = client_renewal_date.strftime("%B %Y")
+        if contract_renews is not None:
+            client_renewal_date = datetime.datetime.strptime(
+                contract_renews, "%B %Y")
+            client_renewal_date_formatted = client_renewal_date.strftime("%B %Y")
+        else:
+            client_renewal_date_formatted = None
     except:
         client_renewal_date_formatted = None
 
@@ -53,11 +56,11 @@ def display_company_summary(company_data, start_date):
     col1, col2 = st.columns(2)
     with col1:
         f"##### Data from [FreshDesk](https://mademedia.freshdesk.com/a/companies/{selected_value}):"
-        company_data_to_display
+        st.write(company_data_to_display)
 
     with col2:
         "##### Data from [Google Sheets](https://docs.google.com/spreadsheets/d/1Mv-7n-1ST9eFB3_q_rHQPt8NfcnsuqNYEM8ei5PXbgw/edit#gid=0):"
-        client_info
+        st.write(client_info)
 
 
 def display_time_summary(tickets_details_df, company_data):
@@ -127,13 +130,21 @@ def display_admin_dashboard():
         companies_options)
     selected_company = next(
         (company for company in companies_data if company["id"] == selected_value), None)
-    company_data = {key: selected_company[key]
-                    for key in selected_company.keys()}
-    display_company_summary(company_data, start_date)
+    time_entries_df = []
+    time_entries_data = []
+    company_data = []
 
-    time_entries_data = get_time_entries_data(
-        start_date, end_date, selected_value)
-    time_entries_df = pd.DataFrame(time_entries_data)
+    if selected_company is not None:
+        company_data = {key: selected_company[key]
+                        for key in selected_company.keys()}
+        display_company_summary(company_data, start_date)
+
+        time_entries_data = get_time_entries_data(
+            start_date, end_date, selected_value)
+        time_entries_df = pd.DataFrame(time_entries_data)
+    else:
+        # Handle the case where no company was found with the selected value
+        print("No company found with the selected value.")
 
     if not time_entries_df.empty:
         time_entries_df = time_entries_df.astype({
@@ -143,6 +154,16 @@ def display_admin_dashboard():
             'company_id': 'str',
             'time_spent_in_seconds': 'str'
         })
+
+        # Create a progress bar
+        progress_text = "Getting time entries for this month…"
+        progress_bar = st.progress(0, text=progress_text)
+
+        # Call the modified prepare_tickets_details function
+        tickets_details = prepare_tickets_details(time_entries_data, product_options, progress=progress_bar, progress_text=progress_text)
+
+        # Mark the progress as complete
+        progress_bar.progress(1.0, text="Your ticket details are ready!").empty()
 
         tickets_details = prepare_tickets_details(
             time_entries_data, product_options)
@@ -173,7 +194,7 @@ def display_admin_dashboard():
                 .format(precision=1)
             )
             # st.markdown(formatted_tickets_details_df.to_html(render_links=True), unsafe_allow_html=True)
-            tickets_details_df
+            st.write(tickets_details_df)
 
         else:
             st.write("Uh-oh, I couldn't find any tickets that match the time entries tracked this month. This probably means something is wrong with me 🤖")
@@ -212,8 +233,11 @@ def main():
         name, authentication_status, username = authenticator.login('Login', 'main')
 
     if st.session_state["authentication_status"]:
-        st.button('Logout', on_click=lambda: authenticator.logout('Logout', 'main'))
         display_admin_dashboard()
+        st.write('---')
+        logout_link = f'You’re logged in as {name} (`{username}`) · <a href="#" onclick="window.location.href=\'/logout?source=main\'; return false;">Log Out</a>'
+        st.write(logout_link, unsafe_allow_html=True)
+
     elif st.session_state["authentication_status"] == False:
         st.error('Username/password is incorrect')
     elif st.session_state["authentication_status"] == None:

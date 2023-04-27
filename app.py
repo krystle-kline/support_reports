@@ -1,9 +1,12 @@
 import pandas as pd
 import streamlit as st
 import datetime
+import streamlit_authenticator as stauth
+
 from config import base_url, status_mapping
 from api import get_ticket_data, get_tickets_data, get_agent_data, get_requester_data, get_group_data, get_paginated, get_products_data, get_product_options, get_companies_data, get_companies_options, get_time_entries_data
 from utils import date_range_selector, get_currency_symbol, setup_google_sheets, open_google_sheet, get_client_data, get_contract_renews_date, display_columns, get_product_options, prepare_tickets_details, calculate_billable_time
+
 
 api_key = st.secrets["api_key"]
 
@@ -46,12 +49,11 @@ def display_company_summary(company_data, start_date):
     formatted_date = datetime.datetime.strptime(
         start_date, '%Y-%m-%d').strftime('%B %Y')
     st.write(f'## {company_name} — {formatted_date}')
-    
+
     col1, col2 = st.columns(2)
     with col1:
         f"##### Data from [FreshDesk](https://mademedia.freshdesk.com/a/companies/{selected_value}):"
         company_data_to_display
-    
 
     with col2:
         "##### Data from [Google Sheets](https://docs.google.com/spreadsheets/d/1Mv-7n-1ST9eFB3_q_rHQPt8NfcnsuqNYEM8ei5PXbgw/edit#gid=0):"
@@ -79,7 +81,6 @@ def display_time_summary(tickets_details_df, company_data):
         company_data['custom_fields']['currency'])
     total_billable_hours = tickets_details_df['billable_time_this_month'].sum(
     ) - float(company_data['custom_fields'].get('inclusive_hours') or 0)
-
 
     estimated_cost = f"{currency_symbol}{max(total_billable_hours - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']) if is_current_or_adjacent_month and company_data['custom_fields']['contract_hourly_rate'] is not None else 0.00:,.2f}"
 
@@ -109,10 +110,7 @@ def display_time_summary(tickets_details_df, company_data):
         st.warning(f"Ticket{'s' if num_invoice_tickets > 1 else ''} {invoice_tickets_str} {'are' if num_invoice_tickets > 1 else 'is'} marked with billing status ‘Invoice’ and {'have a total of' if num_invoice_tickets > 1 else 'has'} {total_invoice_time_str} hours tracked this month. This time is not included in the above total of billable hours.")
 
 
-def main():
-    st.set_page_config(layout="wide", page_icon=":bar_chart:")
-    st.title("Made Media support report")
-
+def display_admin_dashboard():
     client = setup_google_sheets()
     sheet = open_google_sheet(client, st.secrets["private_gsheets_url"])
     global worksheet
@@ -182,6 +180,46 @@ def main():
 
     else:
         st.write("No time tracked for this month")
+
+
+def main():
+    st.set_page_config(layout="wide", page_icon=":bar_chart:")
+    st.title("Made Media support report")
+
+    import yaml
+    from yaml.loader import SafeLoader
+    with open("auth.yaml") as f:
+        auth = yaml.load(f, Loader=SafeLoader)
+        authenticator = stauth.Authenticate(
+            auth['credentials'],
+            auth['cookie']['name'],
+            auth['cookie']['key'],
+            auth['cookie']['expiry_days'],
+            auth['preauthorized']
+        )
+        
+
+    with open('auth.yaml', 'r') as f:
+        auth_data = yaml.safe_load(f)
+
+        credentials = auth_data['credentials']
+        cookie_name = auth_data['cookie']['name']
+        key = auth_data['cookie']['key']
+        cookie_expiry_days = auth_data['cookie']['expiry_days']
+        preauthorized = auth_data.get('preauthorized', {}).get('emails', [])
+
+        username = st.session_state.get('username', None)
+        name, authentication_status, username = authenticator.login('Login', 'main')
+
+    if st.session_state["authentication_status"]:
+        st.button('Logout', on_click=lambda: authenticator.logout('Logout', 'main'))
+        display_admin_dashboard()
+    elif st.session_state["authentication_status"] == False:
+        st.error('Username/password is incorrect')
+    elif st.session_state["authentication_status"] == None:
+        st.warning('Please enter your username and password')
+    else:
+        st.error("I don't know who you are 🤷‍♂️")
 
 
 if __name__ == "__main__":

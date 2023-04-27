@@ -1,0 +1,19 @@
+credentials:
+  usernames:
+    made:
+      email: developers@made.media
+      name: Made Media
+      role: superuser
+      password: $2b$12$ngcZbOIcjJfgmquXwjyR2.yZENjz/g5Zyt6SPs8EMe0sg9VxtwRk.
+    laphil:
+      email: tristan.rodman@laphil.com
+      name: Tristan Friedberg Rodman
+      role: client
+      password: p@ssw0rd
+cookie:
+  expiry_days: 30
+  key: PutThatCoffeeDown
+  name: madebot_auth
+preauthorized:
+  emails:
+  - nobody@nowhere.org

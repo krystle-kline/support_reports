@@ -53,14 +53,15 @@ def display_company_summary(company_data, start_date):
         start_date, '%Y-%m-%d').strftime('%B %Y')
     st.write(f'## {company_name} — {formatted_date}')
 
-    col1, col2 = st.columns(2)
-    with col1:
-        f"##### Data from [FreshDesk](https://mademedia.freshdesk.com/a/companies/{selected_value}):"
-        st.write(company_data_to_display)
+    with st.expander("Company Details"):
+        col1, col2 = st.columns(2)
+        with col1:
+            f"##### Data from [FreshDesk](https://mademedia.freshdesk.com/a/companies/{selected_value}):"
+            st.write(company_data_to_display)
 
-    with col2:
-        "##### Data from [Google Sheets](https://docs.google.com/spreadsheets/d/1Mv-7n-1ST9eFB3_q_rHQPt8NfcnsuqNYEM8ei5PXbgw/edit#gid=0):"
-        st.write(client_info)
+        with col2:
+            "##### Data from [Google Sheets](https://docs.google.com/spreadsheets/d/1Mv-7n-1ST9eFB3_q_rHQPt8NfcnsuqNYEM8ei5PXbgw/edit#gid=0):"
+            st.write(client_info)
 
 
 def display_time_summary(tickets_details_df, company_data):

@@ -190,11 +190,29 @@ def display_admin_dashboard():
             formatted_tickets_details_df = tickets_details_df.copy()
 
             formatted_tickets_details_df = (
-                formatted_tickets_details_df.style
-                .format(precision=1)
+                formatted_tickets_details_df.rename(columns={
+                    'ticket_id': 'Ticket ID',
+                    'title': 'Title',
+                    'status': 'Status',
+                    'product': 'Product',
+                    'assigned_agent': 'Assigned To',
+                    'requester_name': 'Filed By',
+                    'category': 'Category',
+                    'change_request': 'Change Request?',
+                    'time_spent_this_month': 'Time Tracked This Month',
+                    'billable_time_this_month': 'Billable Time This Month',
+                    'type': 'Type',
+                    'group': 'Group',
+                    'billing_status': 'Billing Status',
+                    'cf_client_deadline': 'Client Deadline',
+                    'tags': 'Tags',
+                })
+                .set_index('Ticket ID')
+                .sort_values(by = 'Ticket ID')
+                .style.format(precision=1)
             )
             # st.markdown(formatted_tickets_details_df.to_html(render_links=True), unsafe_allow_html=True)
-            st.write(tickets_details_df)
+            st.write(formatted_tickets_details_df)
 
         else:
             st.write("Uh-oh, I couldn't find any tickets that match the time entries tracked this month. This probably means something is wrong with me 🤖")
@@ -241,7 +259,7 @@ def main():
     elif st.session_state["authentication_status"] == False:
         st.error('Username/password is incorrect')
     elif st.session_state["authentication_status"] == None:
-        st.warning('Please enter your username and password')
+        st.warning('Please enter your username and password').empty()
     else:
         st.error("I don't know who you are 🤷‍♂️")
 

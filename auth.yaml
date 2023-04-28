@@ -4,14 +4,17 @@ credentials:
       email: client.services@made.media
       name: Made
       password: $2b$12$kuPpMiuZZoXoTEybo4xO0OlMzSmK5xc7ijBof1uxL.pAL4jEdwI2e
+      role: admin
     laphil:
       email: tristan.rodman@laphil.com
       name: Tristan Rodman
       password: $2b$12$Zqh/U.w88ItniUySNQNglOkbLVEwy0dJikJ1EGHMo5jVt/sGQi3X.
+      role: client
+      client_code: LAP
 cookie:
   expiry_days: 30
-  key: random_signature_key # Must be string
-  name: random_cookie_name
+  key: uhNaoOS1KtjPT1GsVZN1
+  name: madebot_login
 preauthorized:
   emails:
   - melsby@gmail.com

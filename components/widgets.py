@@ -2,8 +2,8 @@ import streamlit as st
 
 def display_login_status(authenticator):
     if st.session_state["authentication_status"]:
-        authenticator.logout('Log Out', 'main')
         st.write(f'Hey {st.session_state["name"]} :v:')
+        authenticator.logout('Log Out', 'main')
     elif st.session_state["authentication_status"] == False:
         st.error('Username/password is incorrect')
     else:

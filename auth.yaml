@@ -7,8 +7,8 @@ credentials:
       role: admin
     laphil:
       email: tristan.rodman@laphil.com
-      name: Tristan Rodman
-      password: $2b$12$Zqh/U.w88ItniUySNQNglOkbLVEwy0dJikJ1EGHMo5jVt/sGQi3X.
+      name: Joe Carter
+      password: $2b$12$fHqzJIbSCBPakdzjgE9UvO12pn8EA7rZcBXnz5nWFgamvqalUU94a
       role: client
       client_code: LAP
 cookie:

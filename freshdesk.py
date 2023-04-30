@@ -3,6 +3,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import urllib.parse
+import datetime
 
 from typing import List
 from dateutil.parser import parse
@@ -46,7 +47,8 @@ def get_data_from_api(url, api_key):
         link_header = response.headers.get('link')
         return data, link_header
     else:
-        print(f"Error fetching data from API. Status code: {response.status_code}")
+        print(
+            f"Error fetching data from API. Status code: {response.status_code}")
         print(f"Response text: {response.text}")
         return None, None
 
@@ -109,7 +111,6 @@ def process_ticket(ticket):
 
     contact_name = get_contacts().get(ticket['requester_id'], "N/A")
 
-
     ticket = {
         'id': ticket['id'],
         'subject': ticket['subject'],
@@ -142,7 +143,39 @@ def process_ticket(ticket):
     return ticket
 
 
-def get_tickets_data(status=None, priority=None, agent_id=None, group_id=None, tag=None, modified_within=None, company_ids: List[int] = None):
+def get_tickets_data(updated_since=None, per_page=100, order_by='updated_at', order_type='desc', include='stats,requester,description', requester_id=None, company_id=None):
+    url_params = {
+        'per_page': per_page,
+        'order_by': order_by,
+        'order_type': order_type,
+        'include': include
+    }
+
+    if updated_since is None:
+        # Get tickets from the last 3 days
+        date = datetime.datetime.now() - datetime.timedelta(days=3)
+        date_utc = date.astimezone(datetime.timezone.utc)
+        updated_since = date_utc.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    if requester_id:
+        url_params['requester_id'] = requester_id
+    if company_id:
+        url_params['company_id'] = company_id
+    if updated_since:
+        url_params['updated_since'] = updated_since
+
+    query_string = '&'.join(
+        [f"{key}={urllib.parse.quote(str(value))}" for key, value in url_params.items()])
+    tickets_url = f'{base_url}/tickets?{query_string}'
+
+    tickets_data = []
+    for page_data in get_paginated(tickets_url, api_key):
+        tickets_data.extend(page_data)
+
+    return tickets_data
+
+
+def search_tickets(status=None, priority=None, agent_id=None, group_id=None, tag=None, modified_within=None, company_ids: List[int] = None):
     query_parts = []
 
     if status is not None:
@@ -153,9 +186,8 @@ def get_tickets_data(status=None, priority=None, agent_id=None, group_id=None, t
         query_parts.append(f"agent_id:{agent_id}")
     if modified_within is not None:
         start_date, end_date = modified_within
-        query_parts.append(f"updated_at:> '{start_date.isoformat()}' AND updated_at:< '{end_date.isoformat()}'")
-
-
+        query_parts.append(
+            f"updated_at:> '{start_date.isoformat()}' AND updated_at:< '{end_date.isoformat()}'")
     if company_ids is not None and len(company_ids) > 0:
         company_query_parts = [
             f"company_id: {company_id}" for company_id in company_ids]
@@ -163,6 +195,8 @@ def get_tickets_data(status=None, priority=None, agent_id=None, group_id=None, t
         query_parts.append(f"({company_query})")
 
     query_string = " AND ".join(query_parts)
+    if not query_string:
+        query_string = "updated_at:< '2021-01-01'"
     print(f"Generated query: {query_string}")
 
     tickets_url = f'{base_url}/search/tickets?query="{query_string}"'
@@ -178,5 +212,4 @@ def get_tickets_data(status=None, priority=None, agent_id=None, group_id=None, t
                 processed_ticket = process_ticket(ticket)
                 yield processed_ticket
         else:
-            print("No results found in the tickets object.")
-
+            print("No results found in the `tickets` object.")

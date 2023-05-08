@@ -78,6 +78,13 @@ def get_products():
     return products
 
 
+@st.cache_resource(ttl=60*60, show_spinner=False)
+def get_ticket_data(ticket_id):
+    ticket_url = f'{base_url}/tickets/{ticket_id}'
+    ticket_data, _ = get_data_from_api(ticket_url, api_key)
+    return ticket_data
+
+
 @st.cache_data(ttl=60*60*24*7, show_spinner=False)
 def get_agents():
     agents_data = fetch_data('agents', api_key)
@@ -108,16 +115,13 @@ def get_contacts():
 
 
 def get_useful_ticket_data(ticket):
-
-    contact_name = get_contacts().get(ticket['requester_id'], "N/A")
-
     ticket = {
         'id': ticket['id'],
         'subject': ticket['subject'],
         'created_at': ticket['created_at'],
         'updated_at': ticket['updated_at'],
         'group_id': ticket['group_id'],
-        'requester': contact_name,
+        'requester': get_contacts().get(ticket['requester_id'], "N/A"),
         'requester_email': ticket['requester'].get('email') if ticket.get('requester') else "N/A",
         'responder': get_agents().get(ticket['responder_id']),
         'product': get_products().get(ticket['product_id']),
@@ -144,7 +148,7 @@ def get_useful_ticket_data(ticket):
 
 
 def get_tickets_data(updated_since=None, per_page=100, order_by='updated_at', order_type='desc', include='stats,requester,description', requester_id=None, company_id=None):
-    
+
     url_params = {
         'per_page': per_page,
         'order_by': order_by,
@@ -215,3 +219,39 @@ def search_tickets(status=None, priority=None, agent_id=None, group_id=None, tag
                 yield processed_ticket
         else:
             print("No results found in the `tickets` object.")
+
+
+
+def calculate_billable_time(time_entry):
+    """
+    Takes a time entry and returns the amount of time in seconds that should be billed to the client for it
+    """
+
+    # Here's the data we need:
+    ticket_data = get_ticket_data(time_entry["ticket_id"])
+    product_id = ticket_data["product_id"]
+    product_name = get_product_options(get_products_data())[product_id]
+    change_request = ticket_data["custom_fields"].get("change_request", False)
+    time_spent = time_entry["time_spent_in_seconds"] / 3600
+    billing_status = ticket_data["custom_fields"].get("billing_status")
+
+    # And here's some config:
+    saas_products = ["BlocksOffice", "MonkeyWrench"]
+    unbillable_billing_statuses = ["Free", "90 days", "Invoice"]
+
+    # Now we can work out whether the time entry is billable or not:
+    if billing_status in unbillable_billing_statuses:
+        return 0
+        # If the ticket is has one of these billing statuses in FreshDesk, it's definitely not billable
+    elif change_request:
+        return time_spent
+        # Otherwise, if the ticket is marked as a change request, it's billable
+    elif product_name in saas_products:
+        return 0
+        # Then, if it's a SaaS product, it's not billable
+    elif time_entry["billable"]:
+        return time_spent
+        # If it's not a SaaS product, and the time entry is marked as billable, it's billable
+    else:
+        return 0
+        # Otherwise, it's not billable

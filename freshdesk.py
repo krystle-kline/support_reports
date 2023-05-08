@@ -107,7 +107,7 @@ def get_contacts():
     return contacts
 
 
-def process_ticket(ticket):
+def get_useful_ticket_data(ticket):
 
     contact_name = get_contacts().get(ticket['requester_id'], "N/A")
 
@@ -144,15 +144,17 @@ def process_ticket(ticket):
 
 
 def get_tickets_data(updated_since=None, per_page=100, order_by='updated_at', order_type='desc', include='stats,requester,description', requester_id=None, company_id=None):
+    
     url_params = {
         'per_page': per_page,
         'order_by': order_by,
         'order_type': order_type,
-        'include': include
+        'include': include,
+        'updated_since': updated_since
     }
 
+    # get tickets from the last 3 days by default
     if updated_since is None:
-        # Get tickets from the last 3 days
         date = datetime.datetime.now() - datetime.timedelta(days=3)
         date_utc = date.astimezone(datetime.timezone.utc)
         updated_since = date_utc.strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -209,7 +211,7 @@ def search_tickets(status=None, priority=None, agent_id=None, group_id=None, tag
         if "results" in tickets:
             for ticket in tickets["results"]:
                 print(f"Ticket object: {ticket}")
-                processed_ticket = process_ticket(ticket)
+                processed_ticket = get_useful_ticket_data(ticket)
                 yield processed_ticket
         else:
             print("No results found in the `tickets` object.")

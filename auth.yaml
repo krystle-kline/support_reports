@@ -6,7 +6,7 @@ credentials:
       password: $2b$12$kuPpMiuZZoXoTEybo4xO0OlMzSmK5xc7ijBof1uxL.pAL4jEdwI2e
       role: admin
     laphil:
-      email: tristan.rodman@laphil.com
+      email: joe.carter@laphil.com
       name: Joe Carter
       password: $2b$12$fHqzJIbSCBPakdzjgE9UvO12pn8EA7rZcBXnz5nWFgamvqalUU94a
       role: client

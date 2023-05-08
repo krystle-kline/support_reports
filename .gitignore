@@ -1,3 +1,4 @@
 .streamlit/secrets.toml
 __pycache__/
 auth_utils.py
+components/admin_views.py

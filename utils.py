@@ -23,7 +23,7 @@ def calculate_billable_time(time_entry):
     # Here's the data we need:
     ticket_data = get_ticket_data(time_entry["ticket_id"])
     product_id = ticket_data["product_id"]
-    product_name = get_product_options(get_products_data())[product_id]
+    product_name = get_product_options(get_products_data()).get(product_id, "Unknown product")
     change_request = ticket_data["custom_fields"].get("change_request", False)
     time_spent = time_entry["time_spent_in_seconds"] / 3600
     billing_status = ticket_data["custom_fields"].get("billing_status")

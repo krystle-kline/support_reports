@@ -1,3 +1,4 @@
 .streamlit/secrets.toml
 __pycache__/
 auth.py
+auth_utils.py

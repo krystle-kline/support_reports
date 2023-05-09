@@ -14,11 +14,11 @@ api_key = st.secrets["api_key"]
 def display_client_selector(companies_options):
     col1, col2 = st.columns(2)
     with col1:
-        selected_client = st.selectbox('Select a client', companies_options)
+        selected_client = st.selectbox('Client', companies_options)
         selected_value = companies_options.get(selected_client)
     with col2:
-        start_date, end_date = date_range_selector('Select a month and year', datetime.datetime.now(
-        ) - datetime.timedelta(days=1080), datetime.datetime.now())
+        start_date, end_date = date_range_selector('Month', datetime.datetime.now(
+        ) - datetime.timedelta(days=1095), datetime.datetime.now())
     return selected_client, selected_value, start_date, end_date
 
 
@@ -53,7 +53,7 @@ def display_company_summary(company_data, start_date):
         start_date, '%Y-%m-%d').strftime('%B %Y')
     st.write(f'## {company_name} — {formatted_date}')
 
-    with st.expander("Company Details"):
+    with st.expander("Company details for debugging"):
         col1, col2 = st.columns(2)
         with col1:
             f"##### Data from [FreshDesk](https://mademedia.freshdesk.com/a/companies/{selected_value}):"
@@ -64,17 +64,17 @@ def display_company_summary(company_data, start_date):
             st.write(client_info)
 
 
-def display_time_summary(tickets_details_df, company_data):
+def display_time_summary(tickets_details_df, company_data, start_date):
     year, month, _ = start_date.split("-")
     key = f"{year}_{month}_carryover"
     carryover_value = client_info.get(key)
 
-    total_time = f"{tickets_details_df['time_spent_this_month'].sum():.1f} hours"
-    billable_time = f"{tickets_details_df['billable_time_this_month'].sum():.1f} hours"
+    total_time = f"{tickets_details_df['time_spent_this_month'].sum():.1f} h"
+    billable_time = f"{tickets_details_df['billable_time_this_month'].sum():.1f} h"
 
-    rollover_time = "{:.1f} hours".format(float(carryover_value)) if carryover_value is not None and str(
+    rollover_time = "{:.1f} h".format(float(carryover_value)) if carryover_value is not None and str(
         carryover_value).replace(".", "", 1).isdigit() else None
-    net_time = "{:.1f} hours".format(tickets_details_df['billable_time_this_month'].sum(
+    net_time = "{:.1f} h".format(tickets_details_df['billable_time_this_month'].sum(
     ) - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0)) if carryover_value is not None else None
 
     now = datetime.datetime.now()
@@ -88,16 +88,30 @@ def display_time_summary(tickets_details_df, company_data):
 
     estimated_cost = f"{currency_symbol}{max(total_billable_hours - (float(carryover_value) if carryover_value is not None and str(carryover_value).replace('.', '', 1).isdigit() else 0), 0) * (company_data['custom_fields']['contract_hourly_rate']) if is_current_or_adjacent_month and company_data['custom_fields']['contract_hourly_rate'] is not None else 0.00:,.2f}"
 
+    inclusive_hours = company_data['custom_fields'].get('inclusive_hours')
+
     time_summary_contents = {
-        "Total time this month": total_time,
-        "Billable time this month": billable_time,
+        "Total time tracked": total_time,
+        "Of which potentially billable": billable_time,
     }
+    
+    if inclusive_hours is not None and is_current_or_adjacent_month:
+        time_summary_contents["Support contract includes"] = "{:.0f} h".format(inclusive_hours)
 
     if rollover_time is not None:
         time_summary_contents["Rollover time available"] = rollover_time
 
+    if company_data['custom_fields']['contract_hourly_rate'] is not None and is_current_or_adjacent_month:
+        time_summary_contents["Hourly rate for overages"] = f"{currency_symbol}{company_data['custom_fields']['contract_hourly_rate']:,.0f}"
+
     if is_current_or_adjacent_month and company_data['custom_fields']['contract_hourly_rate'] is not None:
         time_summary_contents["Estimated cost this month"] = estimated_cost
+
+    # time_summary_table = "<table>"
+    # for each in time_summary_contents:
+    #     time_summary_table += f"<tr><td>{each}</td><td align='right'>{time_summary_contents[each]}</td></tr>"
+    # time_summary_table += "</table><br>"
+    # st.markdown(time_summary_table, unsafe_allow_html=True)
 
     display_columns(time_summary_contents)
 
@@ -114,7 +128,7 @@ def display_time_summary(tickets_details_df, company_data):
         st.warning(f"Ticket{'s' if num_invoice_tickets > 1 else ''} {invoice_tickets_str} {'are' if num_invoice_tickets > 1 else 'is'} marked with billing status ‘Invoice’ and {'have a total of' if num_invoice_tickets > 1 else 'has'} {total_invoice_time_str} hours tracked this month. This time is not included in the above total of billable hours.")
 
 
-def display_admin_dashboard():
+def display_monthly_dashboard(client_filter=None):
     client = setup_google_sheets()
     sheet = open_google_sheet(client, st.secrets["private_gsheets_url"])
     global worksheet
@@ -125,7 +139,6 @@ def display_admin_dashboard():
     products_data = get_products_data()
     product_options = get_product_options(products_data)
 
-    global start_date
     global selected_value
     iselected_client, selected_value, start_date, end_date = display_client_selector(
         companies_options)
@@ -144,7 +157,6 @@ def display_admin_dashboard():
             start_date, end_date, selected_value)
         time_entries_df = pd.DataFrame(time_entries_data)
     else:
-        # Handle the case where no company was found with the selected value
         print("No company found with the selected value.")
 
     if not time_entries_df.empty:
@@ -156,18 +168,11 @@ def display_admin_dashboard():
             'time_spent_in_seconds': 'str'
         })
 
-        # Create a progress bar
         progress_text = "Getting time entries for this month…"
         progress_bar = st.progress(0, text=progress_text)
-
-        # Call the modified prepare_tickets_details function
         tickets_details = prepare_tickets_details(time_entries_data, product_options, progress=progress_bar, progress_text=progress_text)
-
-        # Mark the progress as complete
         progress_bar.progress(1.0, text="Your ticket details are ready!").empty()
 
-        tickets_details = prepare_tickets_details(
-            time_entries_data, product_options)
         tickets_details_df = pd.DataFrame(tickets_details)
 
         if not tickets_details_df.empty:
@@ -184,7 +189,7 @@ def display_admin_dashboard():
                 'billable_time_this_month': 'float'
             })
 
-            display_time_summary(tickets_details_df, company_data)
+            display_time_summary(tickets_details_df, company_data, start_date)
 
             st.markdown("#### Tickets with time tracked this month")
 
@@ -224,7 +229,6 @@ def display_admin_dashboard():
 
 def main():
     st.set_page_config(layout="wide", page_icon=":bar_chart:")
-    st.title("Made Media support report")
 
     import yaml
     from yaml.loader import SafeLoader
@@ -252,7 +256,7 @@ def main():
         name, authentication_status, username = authenticator.login('Login', 'main')
 
     if st.session_state["authentication_status"]:
-        display_admin_dashboard()
+        display_monthly_dashboard()
         st.write('---')
         logout_link = f'You’re logged in as {name} (`{username}`) · <a href="#" onclick="window.location.href=\'/logout?source=main\'; return false;">Log Out</a>'
         st.write(logout_link, unsafe_allow_html=True)

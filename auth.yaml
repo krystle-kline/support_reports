@@ -3,11 +3,18 @@ credentials:
     made:
       email: client.services@made.media
       name: Made
+      client_code: admin
       password: $2b$12$kuPpMiuZZoXoTEybo4xO0OlMzSmK5xc7ijBof1uxL.pAL4jEdwI2e
     laphil:
       email: tristan.rodman@laphil.com
-      name: Tristan Rodman
+      name: Los Angeles Philharmonic
+      client_code: LAP
       password: $2b$12$Zqh/U.w88ItniUySNQNglOkbLVEwy0dJikJ1EGHMo5jVt/sGQi3X.
+    fst:
+      email: rebecca.hopkins@floridastudiotheatre.org
+      name: Florida Studio Theatre
+      client_code: FST
+      password: $2b$12$y5Pa6p8iFI67yucdP.5Ipe92EDxe71HufWQ0pqkCN8931mtFMhW6e
 cookie:
   expiry_days: 30
   key: random_signature_key # Must be string

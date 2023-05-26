@@ -1,3 +1,5 @@
+# app.py
+
 import pandas as pd
 import streamlit as st
 import datetime
@@ -11,10 +13,14 @@ from utils import date_range_selector, get_currency_symbol, setup_google_sheets,
 api_key = st.secrets["api_key"]
 
 
-def display_client_selector(companies_options):
+def display_client_selector(companies_options, client_code=None):
     col1, col2 = st.columns(2)
     with col1:
-        selected_client = st.selectbox('Client', companies_options)
+        if client_code is not None and client_code != "admin":
+            selected_client = client_code
+            st.markdown(f"<small>Client</small>\n\n {selected_client}", unsafe_allow_html=True)
+        else:
+            selected_client = st.selectbox('Client', companies_options)
         selected_value = companies_options.get(selected_client)
     with col2:
         start_date, end_date = date_range_selector('Month', datetime.datetime.now(
@@ -49,9 +55,6 @@ def display_company_summary(company_data, start_date):
         'Included Hours Per Month': company_cfs['inclusive_hours'],
         'Overage Rate': f"{company_cfs['currency']} {company_cfs['contract_hourly_rate']}/hour"
     }
-    formatted_date = datetime.datetime.strptime(
-        start_date, '%Y-%m-%d').strftime('%B %Y')
-    st.write(f'## {company_name} — {formatted_date}')
 
     with st.expander("Company details for debugging"):
         col1, col2 = st.columns(2)
@@ -128,7 +131,7 @@ def display_time_summary(tickets_details_df, company_data, start_date):
         st.warning(f"Ticket{'s' if num_invoice_tickets > 1 else ''} {invoice_tickets_str} {'are' if num_invoice_tickets > 1 else 'is'} marked with billing status ‘Invoice’ and {'have a total of' if num_invoice_tickets > 1 else 'has'} {total_invoice_time_str} hours tracked this month. This time is not included in the above total of billable hours.")
 
 
-def display_monthly_dashboard(client_filter=None):
+def display_monthly_dashboard(client_code=None):
     client = setup_google_sheets()
     sheet = open_google_sheet(client, st.secrets["private_gsheets_url"])
     global worksheet
@@ -140,11 +143,11 @@ def display_monthly_dashboard(client_filter=None):
     product_options = get_product_options(products_data)
 
     global selected_value
-    iselected_client, selected_value, start_date, end_date = display_client_selector(
-        companies_options)
+    selected_client, selected_value, start_date, end_date = display_client_selector(
+        companies_options, client_code)
     selected_company = next(
         (company for company in companies_data if company["id"] == selected_value), None)
-    time_entries_df = []
+    time_entries_df = pd.DataFrame()
     time_entries_data = []
     company_data = []
 
@@ -176,49 +179,23 @@ def display_monthly_dashboard(client_filter=None):
         tickets_details_df = pd.DataFrame(tickets_details)
 
         if not tickets_details_df.empty:
-            tickets_details_df = tickets_details_df.astype({
-                'ticket_id': 'str',
-                'title': 'str',
-                'product': 'str',
-                'status': 'str',
-                'assigned_agent': 'str',
-                'requester_name': 'str',
-                'category': 'str',
-                'change_request': 'bool',
-                'time_spent_this_month': 'float',
-                'billable_time_this_month': 'float'
-            })
 
             display_time_summary(tickets_details_df, company_data, start_date)
 
-            st.markdown("#### Tickets with time tracked this month")
+            formatted_date = datetime.datetime.strptime(start_date, '%Y-%m-%d').strftime('%B %Y')
+            st.markdown(f"#### Made Media support tickets with time tracked during {formatted_date} for {company_data['name']}")
 
-            formatted_tickets_details_df = tickets_details_df.copy()
-
-            formatted_tickets_details_df = (
-                formatted_tickets_details_df.rename(columns={
-                    'ticket_id': 'Ticket ID',
-                    'title': 'Title',
-                    'status': 'Status',
-                    'product': 'Product',
-                    'assigned_agent': 'Assigned To',
-                    'requester_name': 'Filed By',
-                    'category': 'Category',
-                    'change_request': 'Change Request?',
-                    'time_spent_this_month': 'Time Tracked This Month',
-                    'billable_time_this_month': 'Billable Time This Month',
-                    'type': 'Type',
-                    'group': 'Group',
-                    'billing_status': 'Billing Status',
-                    'cf_client_deadline': 'Client Deadline',
-                    'tags': 'Tags',
-                })
-                .set_index('Ticket ID')
-                .sort_values(by = 'Ticket ID')
-                .style.format(precision=1)
-            )
-            # st.markdown(formatted_tickets_details_df.to_html(render_links=True), unsafe_allow_html=True)
-            st.write(formatted_tickets_details_df)
+            tickets_html = f"<table>"
+            tickets_html += f"<tr><th>Ticket</th><th align='right'>Time tracked this month</th><th align='right'>Potentially billable time this month</th></tr>"
+            for ticket in tickets_details:
+                tickets_html += f"<tr>"
+                tickets_html += f"<td><h6 style='padding-bottom:0;margin-bottom:0'><a href='https://mademedia.freshdesk.com/support/tickets/{ticket['ticket_id']}'>{ticket['ticket_id']}</a>: {ticket['title']}</h6><small>Filed by: {ticket['requester_name']}</small></td>"
+                tickets_html += f"<td align='right'>{ticket['time_spent_this_month']:.1f} hours</td>"
+                tickets_html += f"<td align='right'>{ticket['billable_time_this_month']:.1f} hours</td>"
+                tickets_html += f"</tr>"
+            tickets_html += f"</table>"
+            # tickets_details_df
+            st.markdown(tickets_html, unsafe_allow_html=True)
 
         else:
             st.write("Uh-oh, I couldn't find any tickets that match the time entries tracked this month. This probably means something is wrong with me 🤖")
@@ -241,33 +218,27 @@ def main():
             auth['cookie']['expiry_days'],
             auth['preauthorized']
         )
-        
 
     with open('auth.yaml', 'r') as f:
         auth_data = yaml.safe_load(f)
-
-        credentials = auth_data['credentials']
-        cookie_name = auth_data['cookie']['name']
-        key = auth_data['cookie']['key']
-        cookie_expiry_days = auth_data['cookie']['expiry_days']
-        preauthorized = auth_data.get('preauthorized', {}).get('emails', [])
-
         username = st.session_state.get('username', None)
         name, authentication_status, username = authenticator.login('Login', 'main')
+        if username:
+            user = auth_data['credentials']['usernames'][username]
+            client_code = user['client_code']
 
-    if st.session_state["authentication_status"]:
-        display_monthly_dashboard()
+    if st.session_state.get("authentication_status", False):
+        display_monthly_dashboard(name)
         st.write('---')
-        logout_link = f'You’re logged in as {name} (`{username}`) · <a href="#" onclick="window.location.href=\'/logout?source=main\'; return false;">Log Out</a>'
-        st.write(logout_link, unsafe_allow_html=True)
+        f"You’re logged in as {name} ({username})"
+        authenticator.logout('Logout', 'main')
 
-    elif st.session_state["authentication_status"] == False:
+    elif st.session_state.get("authentication_status", False) == False:
         st.error('Username/password is incorrect')
-    elif st.session_state["authentication_status"] == None:
+    elif st.session_state.get("authentication_status", None) == None:
         st.warning('Please enter your username and password').empty()
     else:
         st.error("I don't know who you are 🤷‍♂️")
-
 
 if __name__ == "__main__":
     main()

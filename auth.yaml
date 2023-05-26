@@ -25,6 +25,12 @@ credentials:
       name: Signature Theatre
       client_code: SIG
       password: $2b$12$L7lr70RxBCwZEXls1EEP1uQo.wXlREW0NVsf2LuF3VYzoRN6YrKO.
+    nycb:
+      email: afippinger@nycballet.com
+      name: New York City Ballet
+      client_code: NYB
+      password: $2b$12$74G9bcIpRboCNu3DVmrHW.1ZG47bVSjtsrCDcLE.CstDiw6Clm1Ey
+
 cookie:
   expiry_days: 30
   key: random_signature_key # Must be string

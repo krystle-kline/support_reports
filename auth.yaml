@@ -20,6 +20,11 @@ credentials:
       name: Minnesota Orchestral Association
       client_code: MOA
       password: $2b$12$nEGD2T5h6cMZ7sICCBb/D.CK5cRxR3Dofk78e5hdDRyoc98PX.oV6
+    sig:
+      email: jbuzzell@sigtheatre.org
+      name: Signature Theatre
+      client_code: SIG
+      password: $2b$12$L7lr70RxBCwZEXls1EEP1uQo.wXlREW0NVsf2LuF3VYzoRN6YrKO.
 cookie:
   expiry_days: 30
   key: random_signature_key # Must be string

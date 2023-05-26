@@ -15,6 +15,11 @@ credentials:
       name: Florida Studio Theatre
       client_code: FST
       password: $2b$12$y5Pa6p8iFI67yucdP.5Ipe92EDxe71HufWQ0pqkCN8931mtFMhW6e
+    moa:
+      email: jen.keavy@minnesotaorchestra.org
+      name: Minnesota Orchestral Association
+      client_code: MOA
+      password: $2b$12$nEGD2T5h6cMZ7sICCBb/D.CK5cRxR3Dofk78e5hdDRyoc98PX.oV6
 cookie:
   expiry_days: 30
   key: random_signature_key # Must be string

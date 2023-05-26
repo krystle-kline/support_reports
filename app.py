@@ -16,7 +16,7 @@ api_key = st.secrets["api_key"]
 def display_client_selector(companies_options, client_code=None):
     col1, col2 = st.columns(2)
     with col1:
-        if client_code is not None and client_code != "admin":
+        if client_code is not None and client_code != "Made":
             selected_client = client_code
             st.markdown(f"<small>Client</small>\n\n {selected_client}", unsafe_allow_html=True)
         else:

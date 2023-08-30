@@ -200,7 +200,6 @@ def display_monthly_dashboard(client_code=None):
     else:
         st.write("No time tracked for this month")
 
-
 def main():
     st.set_page_config(layout="wide", page_icon=":bar_chart:")
 

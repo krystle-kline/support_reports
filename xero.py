@@ -135,11 +135,11 @@ def display_xero_exporter():
         data_for_xero = data_for_xero[columns_for_xero]
 
         # Generate CSV
-        csv = tickets_details_df.to_csv(index=False)
+        csv = data_for_xero.to_csv(index=False)
 
         # Create a download link
         b64 = base64.b64encode(csv.encode()).decode()
-        href = f'<a href="data:file/csv;base64,{b64}" download="xero_data.csv">Your CSV is ready! Click here to download it.</a>'
+        href = f'<a href="data:file/csv;base64,{b64}" download="upload_me_to_xero_for_a_good_time.csv">Your CSV is ready! Click here to download it.</a>'
         st.markdown(href, unsafe_allow_html=True)
 
         # companies_data = get_companies_data()

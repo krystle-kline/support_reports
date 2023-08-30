@@ -20,11 +20,20 @@ def display_month_selector():
 
 def display_territory_selector():
     territories = ['Made Media Inc.', 'Made Media Ltd.']
-    selected_territory = st.multiselect("Choose a territory", territories, default=territories)
+    selected_territory = st.multiselect("Filter by territory", territories, default=territories)
     return selected_territory
     
 
 def display_xero_exporter():
+    st.info('''
+            This can generate a CSV file that you can import into Xero. Caveats: 
+            * tickets marked as invoiced may not be excluded
+            * the system does not yet know about rollover hours
+            * the system does not yet add a line item for the hours included in the monthly retainer
+            
+            For the moment, please deal with these things manually.
+            ''')
+    
     selected_month = display_month_selector()
     selected_territory = display_territory_selector()
 
@@ -98,8 +107,10 @@ def display_xero_exporter():
         # reindex
         data_for_xero = data_for_xero.reset_index(drop=True)
         
-        st.write("Here's a preview of the data that will be exported to Xero:")
-        st.write(data_for_xero)
+        # add an expander
+        with st.expander("Peek at what's in the CSV"):
+            st.write("Here's a preview of the data that will be exported to Xero:")
+            st.write(data_for_xero)
 
         # prep for CSV
         data_for_xero.insert(2, 'EmailAddress', None)
@@ -129,11 +140,10 @@ def display_xero_exporter():
 
         # Create a download link
         b64 = base64.b64encode(csv.encode()).decode()
-        href = f'<a href="data:file/csv;base64,{b64}" download="xero_data.csv">Your CSV is ready! Click here to download it.</a><br>This file is what you need to import into Xero.'
+        href = f'<a href="data:file/csv;base64,{b64}" download="xero_data.csv">Your CSV is ready! Click here to download it.</a>'
+        st.markdown(href, unsafe_allow_html=True)
 
         # companies_data = get_companies_data()
         # companies_data_df = pd.DataFrame(companies_data)
         # st.write(companies_data_df)
-
-        # st.markdown(href, unsafe_allow_html=True)
 

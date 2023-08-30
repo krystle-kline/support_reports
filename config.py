@@ -1,3 +1,5 @@
+# config.py
+
 domain = 'mademedia'
 base_url = f'https://{domain}.freshdesk.com/api/v2'
 

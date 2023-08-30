@@ -7,7 +7,7 @@ import streamlit as st
 import requests
 import gspread
 from google.oauth2.service_account import Credentials
-from api import get_data_from_api, get_paginated, get_ticket_data, get_tickets_data, get_group_data, get_agent_data, get_requester_data, get_products_data, get_product_options
+from api import get_data_from_api, get_paginated, get_ticket_data, get_tickets_data, get_group_data, get_agent_data, get_requester_data, get_products_data, get_product_options, get_companies_data
 from config import base_url, status_mapping
 
 
@@ -167,6 +167,8 @@ def prepare_tickets_details(time_entries_data, product_options, progress=None, p
     total_entries = len(time_entries_data)
     completed_entries = 0
 
+    companies_data = get_companies_data()
+
     for time_entry in time_entries_data:
         ticket_id = time_entry['ticket_id']
         found_ticket = next(
@@ -177,6 +179,20 @@ def prepare_tickets_details(time_entries_data, product_options, progress=None, p
             ticket_data = get_ticket_data(ticket_id)
             product_name = product_options.get(
                 ticket_data["product_id"], "Unknown")
+            company_name = "—"
+            company_code = "—"
+            hourly_rate = "—"
+            currency = "—"
+            territory = "—"
+            if ticket_data["company_id"]:
+                company_id = ticket_data.get("company_id", None)
+                company_data = next(
+                    (item for item in companies_data if item["id"] == company_id), None)
+                company_name = company_data["name"]
+                company_code = company_data["custom_fields"].get("company_code", "—")
+                hourly_rate = company_data["custom_fields"].get("contract_hourly_rate", "—")
+                currency = company_data["custom_fields"].get("currency", "—")
+                territory = company_data["custom_fields"].get("territory", "—")
             status_name = status_mapping.get(ticket_data["status"], "Unknown")
             group_name = "Unknown"
             if ticket_data["group_id"]:
@@ -189,9 +205,9 @@ def prepare_tickets_details(time_entries_data, product_options, progress=None, p
                 agent_name = agent_data["contact"]["name"]
             requester_name = "Unknown"
             if ticket_data["requester_id"]:
-                requester_data = get_requester_data(
-                    ticket_data["requester_id"])
-                requester_name = requester_data["name"]
+                requester_data = get_requester_data(ticket_data["requester_id"])
+                if requester_data is not None:
+                    requester_name = requester_data.get("name", "Unknown")
             change_request = ticket_data["custom_fields"].get(
                 "change_request", False)
             ticket_category = ticket_data["custom_fields"].get(
@@ -206,6 +222,11 @@ def prepare_tickets_details(time_entries_data, product_options, progress=None, p
             tickets_details.append({
                 "ticket_id": ticket_id,
                 "status": status_name,
+                "company": company_name,
+                "company_code": company_code,
+                "currency": currency,
+                "hourly_rate": hourly_rate,
+                "territory": territory,
                 "title": ticket_data["subject"],
                 "requester_name": requester_name,
                 "category": ticket_category,

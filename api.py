@@ -17,7 +17,7 @@ def get_ticket_data(ticket_id):
     return ticket_data
 
 
-@st.cache_resource(ttl=60*60, show_spinner=False)
+@st.cache_resource(ttl=60*60, show_spinner=True)
 def get_tickets_data(updated_since=None, per_page=100, order_by='updated_at', order_type='desc', include='stats,requester,description'):
     if updated_since is None:
         # Get tickets from the last 90 days
@@ -117,8 +117,10 @@ def get_companies_options(companies_data):
 
 
 @st.cache_resource(ttl=60*60*24*7, show_spinner=False)
-def get_time_entries_data(start_date, end_date, selected_value):
-    time_entries_url = f'{base_url}/time_entries?executed_before={end_date}&executed_after={start_date}&company_id={selected_value}'
+def get_time_entries_data(start_date, end_date, selected_value=None):
+    time_entries_url = f'{base_url}/time_entries?executed_before={end_date}&executed_after={start_date}'
+    if selected_value is not None:
+        time_entries_url += f'&company_id={selected_value}'
     time_entries_data = [page_data for sublist in get_paginated(
         time_entries_url, api_key) for page_data in sublist]
     return time_entries_data

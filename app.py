@@ -8,7 +8,7 @@ import streamlit_authenticator as stauth
 from config import base_url, status_mapping
 from api import get_ticket_data, get_tickets_data, get_agent_data, get_requester_data, get_group_data, get_paginated, get_products_data, get_product_options, get_companies_data, get_companies_options, get_time_entries_data
 from utils import date_range_selector, get_currency_symbol, setup_google_sheets, open_google_sheet, get_client_data, get_contract_renews_date, display_columns, get_product_options, prepare_tickets_details, calculate_billable_time
-
+from xero import display_xero_exporter
 
 api_key = st.secrets["api_key"]
 
@@ -228,7 +228,14 @@ def main():
             client_code = user['client_code']
 
     if st.session_state.get("authentication_status", False):
-        display_monthly_dashboard(name)
+        if client_code == "admin":
+            tab1, tab2 = st.tabs(["Tickets with tracked time", "Export for Xero"])
+            with tab1:
+                display_monthly_dashboard(name)
+            with tab2:
+                display_xero_exporter()
+        else:
+            display_monthly_dashboard(name)
         st.write('---')
         f"You’re logged in as {name} ({username})"
         authenticator.logout('Logout', 'main')

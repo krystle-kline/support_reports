@@ -26,10 +26,9 @@ def display_territory_selector():
 
 def display_xero_exporter():
     st.info('''
-            This can generate a CSV file that you can import into Xero. Caveats: 
-            * tickets marked as invoiced may not be excluded
-            * the system does not yet know about rollover hours
-            * the system does not yet add a line item for the hours included in the monthly retainer
+            This can generate a CSV file that you can import into Xero. Known issues: 
+            * The system does not yet know about rollover hours
+            * The system does not yet add a line item for the hours included in the monthly retainer
             
             For the moment, please deal with these things manually.
             ''')

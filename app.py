@@ -10,7 +10,6 @@ from xero import display_xero_exporter
 
 api_key = st.secrets["api_key"]
 
-
 def display_client_selector(companies_options, client_code=None):
     col1, col2 = st.columns(2)
     with col1:

@@ -145,4 +145,7 @@ def display_xero_exporter():
         # companies_data = get_companies_data()
         # companies_data_df = pd.DataFrame(companies_data)
         # st.write(companies_data_df)
+    
+    if st.button("Clear caches"):
+        st.cache_data.clear()
 

@@ -3,9 +3,12 @@ import streamlit as st
 import datetime
 import streamlit_authenticator as stauth
 
+from st_aggrid import AgGrid
+
+
 from config import base_url, status_mapping
 from api import get_ticket_data, get_tickets_data, get_agent_data, get_requester_data, get_group_data, get_paginated, get_products_data, get_product_options, get_companies_data, get_companies_options, get_time_entries_data
-from utils import date_range_selector, get_currency_symbol, setup_google_sheets, open_google_sheet, get_client_data, get_contract_renews_date, display_columns, get_product_options, prepare_tickets_details, calculate_billable_time
+from utils import date_range_selector, get_currency_symbol, setup_google_sheets, open_google_sheet, get_client_data, get_contract_renews_date, display_columns, get_product_options, prepare_tickets_details, prepare_tickets_details_from_time_entries, calculate_billable_time
 from xero import display_xero_exporter
 
 api_key = st.secrets["api_key"]
@@ -170,7 +173,7 @@ def display_monthly_dashboard(client_code=None):
 
         progress_text = "Getting time entries for this month…"
         progress_bar = st.progress(0, text=progress_text)
-        tickets_details = prepare_tickets_details(time_entries_data, product_options, progress=progress_bar, progress_text=progress_text)
+        tickets_details = prepare_tickets_details_from_time_entries(time_entries_data, product_options, progress=progress_bar, progress_text=progress_text)
         progress_bar.progress(1.0, text="Your ticket details are ready!").empty()
 
         tickets_details_df = pd.DataFrame(tickets_details)
@@ -200,6 +203,33 @@ def display_monthly_dashboard(client_code=None):
     else:
         st.write("No time tracked for this month")
 
+
+def display_ticket_search(client_code=None):
+    with st.spinner("Refreshing ticket data…"):
+        tickets_data = get_tickets_data()
+    tickets_details = prepare_tickets_details(tickets_data, client_code)
+    tickets_details_df = pd.DataFrame(tickets_details)
+    st.info("This view is a work in progress. It currently displays tickets that have been updated in the last 90 days.")
+    st.dataframe(
+        tickets_details_df,
+        column_config = {
+            "Ticket ID": st.column_config.NumberColumn(
+                "Ticket ID",
+                format="%d"
+            ),
+            "Created": st.column_config.DatetimeColumn(
+                "Created",
+                format="DD MMM YY HH:mm"
+            ),
+            "Updated": st.column_config.DatetimeColumn(
+                "Updated",
+                format="DD MMM YY HH:mm"
+            ),
+        },
+        hide_index=True
+)
+
+
 def main():
     st.set_page_config(layout="wide", page_icon=":bar_chart:")
 
@@ -225,13 +255,20 @@ def main():
 
     if st.session_state.get("authentication_status", False):
         if client_code == "admin":
-            tab1, tab2 = st.tabs(["Tickets with tracked time", "Export for Xero"])
+            tab1, tab2, tab3 = st.tabs(["Tickets by tracked time", "Tickets by status", "Export for Xero"])
+            with tab1:
+                display_monthly_dashboard(name)
+            with tab3:
+                display_xero_exporter()
+            with tab2:
+                display_ticket_search(client_code)
+            
+        else:
+            tab1, tab2 = st.tabs(["Tickets by tracked time", "Tickets by status"])
             with tab1:
                 display_monthly_dashboard(name)
             with tab2:
-                display_xero_exporter()
-        else:
-            display_monthly_dashboard(name)
+                display_ticket_search(client_code)
         st.write('---')
         f"You’re logged in as {name} ({username})"
         authenticator.logout('Logout', 'main')

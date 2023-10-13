@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 from api import get_companies_options, get_companies_data, get_time_entries_data, get_tickets_data
-from utils import prepare_tickets_details, get_product_options, get_products_data
+from utils import prepare_tickets_details_from_time_entries, get_product_options, get_products_data
 
 
 def display_month_selector():
@@ -47,7 +47,7 @@ def display_xero_exporter():
         products_data = get_products_data()
         product_options = get_product_options(products_data)
 
-        tickets_details = prepare_tickets_details(time_entries_data, product_options)
+        tickets_details = prepare_tickets_details_from_time_entries(time_entries_data, product_options)
 
         for ticket_detail in tickets_details:
             if ticket_detail['company_code']:

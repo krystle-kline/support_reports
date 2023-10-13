@@ -149,7 +149,59 @@ def display_columns(time_summary_contents):
                 st.metric(label, value)
 
 
-def prepare_tickets_details(time_entries_data, product_options, progress=None, progress_text=None):
+
+def prepare_tickets_details(tickets_data, client_code, progress=None, progress_text=None):
+    product_options = get_product_options(get_products_data())
+    companies_data = get_companies_data()
+    tickets_details = []
+    for ticket in tickets_data:
+        if ticket["company_id"]:
+            company_id = ticket.get("company_id", None)
+            company_data = next(
+                (item for item in companies_data if item["id"] == company_id), None)
+            company_name = company_data["name"]
+            company_code = company_data["custom_fields"].get("company_code", "—")
+            hourly_rate = company_data["custom_fields"].get("contract_hourly_rate", "—")
+            currency = company_data["custom_fields"].get("currency", "—")
+            territory = company_data["custom_fields"].get("territory", "—")
+        if ticket["group_id"]:
+            group_id = ticket.get("group_id", None)
+            group_data = get_group_data(ticket["group_id"])
+            group_name = group_data["name"]
+        if ticket["responder_id"]:
+            agent_data = get_agent_data(ticket["responder_id"])
+            agent_name = agent_data["contact"]["name"]
+        if ticket["requester_id"]:
+            requester_data = get_requester_data(ticket["requester_id"])
+            if requester_data is not None:
+                requester_name = requester_data.get("name", "Unknown")
+        tickets_details.append({
+            "Ticket ID": ticket["id"],
+            "Status": status_mapping.get(ticket["status"], "Unknown"),
+            "Organization": company_name,
+            "Client code": company_code,
+            "Title": ticket["subject"],
+            "Requested by": requester_name,
+            "Category": ticket["custom_fields"].get("category", "Unknown"),
+            "Created": ticket["created_at"],
+            "Updated": ticket["updated_at"],
+            "Type": ticket["type"],
+            "Product": product_options.get(ticket["product_id"], "Unknown"),
+            "Change request?": ticket["custom_fields"].get("change_request", False),
+            "Assigned to": agent_name,
+            "Group": group_name,
+            "Billing status": ticket["custom_fields"].get("billing_status", "Unknown"),
+            "Client deadline": ticket["custom_fields"].get("cf_client_deadline", None),
+            "Tags": ticket["tags"]
+        })
+    if client_code != "admin":
+        tickets_details = [ticket for ticket in tickets_details if ticket["Client code"] == client_code]
+        # drop "Client code" column and "Organization" column
+        tickets_details = [{key: value for key, value in ticket.items() if key not in ["Client code", "Organization"]} for ticket in tickets_details]
+    return tickets_details
+
+
+def prepare_tickets_details_from_time_entries(time_entries_data, product_options, progress=None, progress_text=None):
     """
     Get the details of the tickets that the time entries are associated with
 

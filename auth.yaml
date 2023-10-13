@@ -6,30 +6,35 @@ credentials:
       client_code: admin
       password: $2b$12$kuPpMiuZZoXoTEybo4xO0OlMzSmK5xc7ijBof1uxL.pAL4jEdwI2e
     laphil:
-      email: tristan.rodman@laphil.com
+      email: caila.gale@laphil.com
       name: Los Angeles Philharmonic
       client_code: LAP
-      password: $2b$12$Zqh/U.w88ItniUySNQNglOkbLVEwy0dJikJ1EGHMo5jVt/sGQi3X.
+      password: $2b$12$QiQ2l3f7eiCjB6dtWnmygOrr.nmsskstrP8e58NodG2qCd.LkAwBm
     fst:
       email: rebecca.hopkins@floridastudiotheatre.org
       name: Florida Studio Theatre
       client_code: FST
-      password: $2b$12$y5Pa6p8iFI67yucdP.5Ipe92EDxe71HufWQ0pqkCN8931mtFMhW6e
+      password: $2b$12$Ha8/wAAr3XEgkZX.wAZAouZRcHtkSYxtHZXwrwKlVqxlVjRvZfQyi
     moa:
       email: jen.keavy@minnesotaorchestra.org
       name: Minnesota Orchestral Association
       client_code: MOA
-      password: $2b$12$nEGD2T5h6cMZ7sICCBb/D.CK5cRxR3Dofk78e5hdDRyoc98PX.oV6
+      password: $2b$12$M7VH0lKmCWApsYfv7PCMQu0c7EfWyTOgEpvRVIzdoh12zTP3bFL1i
     sig:
       email: jbuzzell@sigtheatre.org
       name: Signature Theatre
       client_code: SIG
-      password: $2b$12$L7lr70RxBCwZEXls1EEP1uQo.wXlREW0NVsf2LuF3VYzoRN6YrKO.
+      password: $2b$12$iCLWNjr7nkJ2/ie9fbGGYupspO2keAGaoqrtu3qa/JYZ6SIq39ipy
     nycb:
       email: afippinger@nycballet.com
       name: New York City Ballet
       client_code: NYB
-      password: $2b$12$74G9bcIpRboCNu3DVmrHW.1ZG47bVSjtsrCDcLE.CstDiw6Clm1Ey
+      password: $2b$12$6I3pCnHn9/xDILSX1w/HB.b1bV9JTM1QBvOxnAFdJVe60Eacsai/W
+    dso:
+      email: mkoning@dso.org
+      name: Detroit Symphony Orchestra
+      client_code: DSO
+      password: $2b$12$OphfRYbDKV4exMa454onluKQBAKMDNs5dKGuImRq4gpD9.BCk4bMa
 
 cookie:
   expiry_days: 30

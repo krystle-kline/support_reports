@@ -3,8 +3,6 @@ import streamlit as st
 import datetime
 import streamlit_authenticator as stauth
 
-from st_aggrid import AgGrid
-
 
 from config import base_url, status_mapping
 from api import get_ticket_data, get_tickets_data, get_agent_data, get_requester_data, get_group_data, get_paginated, get_products_data, get_product_options, get_companies_data, get_companies_options, get_time_entries_data

@@ -203,8 +203,7 @@ def display_monthly_dashboard(client_code=None):
 
 
 def display_ticket_search(client_code=None):
-    with st.spinner("Refreshing ticket data…"):
-        tickets_data = get_tickets_data()
+    tickets_data = get_tickets_data()
     tickets_details = prepare_tickets_details(tickets_data, client_code)
     tickets_details_df = pd.DataFrame(tickets_details)
     st.info("This view is a work in progress. It currently displays tickets that have been updated in the last 90 days.")

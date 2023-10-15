@@ -17,7 +17,7 @@ def get_ticket_data(ticket_id):
     return ticket_data
 
 
-@st.cache_resource(ttl=60*60, show_spinner=True)
+@st.cache_resource(ttl=60*60, show_spinner=False)
 def get_tickets_data(updated_since=None, per_page=100, order_by='updated_at', order_type='desc', include='stats,requester,description'):
     if updated_since is None:
         # Get tickets from the last 90 days

@@ -155,6 +155,7 @@ def prepare_tickets_details(tickets_data, client_code, progress=None, progress_t
     companies_data = get_companies_data()
     tickets_details = []
     for ticket in tickets_data:
+        agent_name, group_name, requester_name, company_name, company_code = "Unknown", "Unknown", "Unknown", "Unknown", "Unknown"
         if ticket["company_id"]:
             company_id = ticket.get("company_id", None)
             company_data = next(
@@ -164,7 +165,6 @@ def prepare_tickets_details(tickets_data, client_code, progress=None, progress_t
             hourly_rate = company_data["custom_fields"].get("contract_hourly_rate", "—")
             currency = company_data["custom_fields"].get("currency", "—")
             territory = company_data["custom_fields"].get("territory", "—")
-        agent_name, group_name, requester_name = "Unknown", "Unknown", "Unknown"
         if ticket["group_id"]:
             group_id = ticket.get("group_id", None)
             group_data = get_group_data(ticket["group_id"])

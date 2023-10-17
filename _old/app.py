@@ -4,7 +4,7 @@ import datetime
 import streamlit_authenticator as stauth
 
 
-from _old.config import base_url, status_mapping
+from config import base_url, status_mapping
 from api import get_ticket_data, get_tickets_data, get_agent_data, get_requester_data, get_group_data, get_paginated, get_products_data, get_product_options, get_companies_data, get_companies_options, get_time_entries_data
 from _old.utils import date_range_selector, get_currency_symbol, setup_google_sheets, open_google_sheet, get_client_data, get_contract_renews_date, display_columns, get_product_options, prepare_tickets_details, prepare_tickets_details_from_time_entries, calculate_billable_time
 from _old.xero import display_xero_exporter

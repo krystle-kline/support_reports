@@ -1,6 +1,3 @@
-# api.py
-"""This file handles all the interaction with the FreshDesk API."""
-
 import streamlit as st
 import requests
 from config import base_url
@@ -100,6 +97,14 @@ def get_paginated(url, api_key):
             yield from get_paginated(next_url, api_key)
 
 
+def find_id_by_client_code(client_code):
+    companies_data = get_companies_data()
+    company = next(
+        (company for company in companies_data if company["custom_fields"]["company_code"] == client_code), None)
+    return company["id"] if company is not None else None
+
+
+
 @st.cache_resource(ttl=60*60*24*7, show_spinner=False)
 def get_companies_data():
     companies_url = f'{base_url}/companies'
@@ -109,7 +114,7 @@ def get_companies_data():
     return companies_data
 
 
-def get_companies_options(companies_data):
+def get_companies(companies_data=get_companies_data()):
     companies_options = {}
     for company_data in companies_data:
         companies_options[company_data['name']] = company_data['id']

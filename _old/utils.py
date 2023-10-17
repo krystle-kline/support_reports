@@ -8,7 +8,7 @@ import requests
 import gspread
 from google.oauth2.service_account import Credentials
 from api import get_data_from_api, get_paginated, get_ticket_data, get_tickets_data, get_group_data, get_agent_data, get_requester_data, get_products_data, get_product_options, get_companies_data
-from config import base_url, status_mapping
+from _old.config import base_url, status_mapping
 
 
 def calculate_billable_time(time_entry):

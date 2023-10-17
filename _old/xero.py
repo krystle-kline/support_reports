@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 
 from api import get_companies_options, get_companies_data, get_time_entries_data, get_tickets_data
-from utils import prepare_tickets_details_from_time_entries, get_product_options, get_products_data
+from _old.utils import prepare_tickets_details_from_time_entries, get_product_options, get_products_data
 
 
 def display_month_selector():

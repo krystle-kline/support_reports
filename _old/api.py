@@ -3,7 +3,7 @@
 
 import streamlit as st
 import requests
-from config import base_url
+from _old.config import base_url
 import urllib.parse
 import datetime
 

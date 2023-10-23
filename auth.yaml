@@ -35,6 +35,11 @@ credentials:
       name: Detroit Symphony Orchestra
       client_code: DSO
       password: $2b$12$OphfRYbDKV4exMa454onluKQBAKMDNs5dKGuImRq4gpD9.BCk4bMa
+    mys:
+      email: krathburn@mysticaquarium.org
+      name: Mystic Aquarium
+      client_code: MYS
+      password: $2b$12$aPNVgDqTKKF7KDATZnq/JOEJErA9xXKtARB0Jmt33lPs.f4YCAD1q
 
 cookie:
   expiry_days: 30

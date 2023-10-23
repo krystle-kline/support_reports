@@ -1,7 +1,8 @@
 import streamlit as st
+st.set_page_config(layout="wide")
+
 from utils import auth
 from views import tickets_by_time_tracked
-st.set_page_config(layout="wide")
 
 def main():
     # authentication

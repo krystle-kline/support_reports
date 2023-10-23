@@ -1,5 +1,5 @@
 import streamlit as st
-from apis import freshdesk
+from apis import freshdesk, googledocs
 from utils import widgets
 
 def display_report(client_code):

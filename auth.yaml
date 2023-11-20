@@ -40,6 +40,31 @@ credentials:
       name: Mystic Aquarium
       client_code: MYS
       password: $2b$12$aPNVgDqTKKF7KDATZnq/JOEJErA9xXKtARB0Jmt33lPs.f4YCAD1q
+    rah:
+      email: linda.yu@made.media
+      name: Royal Albert Hall
+      client_code: RAH
+      password: $2b$12$D5C3banFW8whleNefaVb/.zX0bPBaSSUqnFr5sb/mgezwzJl/PtlW
+    mtc:
+      email: linda.yu@made.media
+      name: Melbourne Theatre Company
+      client_code: MTC
+      password: $2b$12$K9LTvkUpbe1Stgt1vUp/xezCkeZabFBw4trA1mhSQg3fOu5QQYOSy  
+    bso:
+      email: gwright@bso.org
+      name: Boston Symphony Orchestra
+      client_code: BSO
+      password: $2b$12$hU4moxT7bHVWN/4iUuciOuBLv5Oo0OgVeQpNbTNVLmUu0UXt8hbbe
+    gly:
+      email: linda.yu@made.media
+      name: Glyndebourne
+      client_code: GLY
+      password: $2b$12$ywCBXpk1uF4xoUEd53FfbOVXvgPneWgM7HAqS7GxwyvaoBTovYVby
+    wmc:
+      email: linda.yu@made.media
+      name: Wales Millennium Centre
+      client_code: WMC
+      password: $2b$12$adARVnAVNOX7n8ka/iASEuMI4xe0OaQOwY.MYkt7RBMqs9bBd5sv2
 
 cookie:
   expiry_days: 30

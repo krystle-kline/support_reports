@@ -78,7 +78,7 @@ def display_xero_exporter():
             'billable_time_this_month'
         ]]
         data_for_xero['ticket_id'] = data_for_xero['ticket_id'].astype(str)
-        data_for_xero['Description'] = data_for_xero['ticket_id'] + ' – ' + data_for_xero['title']
+        data_for_xero['Description'] = data_for_xero['ticket_id'] + ' - ' + data_for_xero['title']
         data_for_xero['Description'] = data_for_xero['Description'] + ' [' + data_for_xero['product'] + ']'
 
         def add_tags(row):
